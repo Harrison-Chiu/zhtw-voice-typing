@@ -7,7 +7,10 @@ dependencies = [
     "numpy>=2.4.6",
     "opencc-python-reimplemented>=0.1.7",
     "pyyaml>=6.0.3",
+    "qwen-asr>=0.0.6",
     "sounddevice>=0.5.5",
+    "torch>=2.6.0",
+    "torchaudio>=2.6.0",
 ]
 
 [build-system]
@@ -32,3 +35,12 @@ quote-style = "double"
 dev = [
     "ruff>=0.15.17",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }
