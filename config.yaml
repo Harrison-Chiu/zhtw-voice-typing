@@ -26,3 +26,6 @@ processing:
 
 output:
   method: clipboard      # 可選: clipboard, keyboard (未來擴展)
+
+hotkey:
+  combination: "ctrl+alt+r"   # 全域錄音切換快捷鍵

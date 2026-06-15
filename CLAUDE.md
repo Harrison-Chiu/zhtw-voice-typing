@@ -10,6 +10,7 @@
 ```bash
 uv sync                              # 安裝依賴
 uv run python -m asr_input.main      # 啟動 CLI（麥克風錄音→辨識）
+uv run python -m asr_input.tray      # 啟動 System Tray 版（全域快捷鍵）
 uv run python test_audio_file.py     # 用音檔測試（不需要麥克風）
 uv run ruff check src/               # lint 檢查
 uv run ruff format src/              # 格式化
@@ -31,6 +32,7 @@ uv run ruff format src/              # 格式化
 ### 關鍵檔案
 
 - `src/asr_input/main.py` — CLI 進入點，串接整條 pipeline
+- `src/asr_input/tray.py` — System Tray 進入點（全域快捷鍵 + 常駐 tray）
 - `src/asr_input/asr/base.py` — ASR 引擎抽象介面（`ASREngine`）
 - `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
@@ -77,14 +79,15 @@ ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
 
 ## 目前狀態
 
-v0.1 — MVP 完成，CLI 可用。已驗證：
+v0.2 — System Tray 版可用。已驗證：
 - 模型載入 ✓、音檔辨識 ✓、麥克風辨識 ✓、簡轉繁 ✓、台灣用語替換 ✓
 - 多引擎切換 ✓（faster-whisper / Qwen），whisper 已設為預設、繁體+標點原生輸出 ✓
+- **全域快捷鍵 + System Tray** ✓ — `pynput` 熱鍵 + `pystray` 常駐 tray，Toggle 模式
 
-## 後續方向（尚未開始）
+## 後續方向
 
 - **VAD 切段** — 用 Silero VAD 將長音訊切成短段逐段辨識，改善長音訊速度
-- **全域快捷鍵 + System Tray** — 不用開終端機，按快捷鍵直接錄音
+- ~~**全域快捷鍵 + System Tray**~~ ✓ 已完成
 - **即時串流辨識** — 邊講邊出字
 - **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
 - **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
