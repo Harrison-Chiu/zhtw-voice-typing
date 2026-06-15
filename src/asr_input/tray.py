@@ -36,7 +36,7 @@ LABELS = {
     State.PROCESSING: "辨識中...",
 }
 
-DEFAULT_HOTKEY = "ctrl+alt+space"
+DEFAULT_HOTKEY = "ctrl+shift+space"
 
 _KEY_MAP = {
     "ctrl": keyboard.Key.ctrl_l,
