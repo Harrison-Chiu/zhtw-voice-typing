@@ -36,13 +36,28 @@ LABELS = {
     State.PROCESSING: "辨識中...",
 }
 
-DEFAULT_HOTKEY = "ctrl+alt+r"
+DEFAULT_HOTKEY = "ctrl+alt+space"
 
 _KEY_MAP = {
     "ctrl": keyboard.Key.ctrl_l,
     "alt": keyboard.Key.alt_l,
     "shift": keyboard.Key.shift_l,
     "win": keyboard.Key.cmd,
+    "space": keyboard.Key.space,
+    "esc": keyboard.Key.esc,
+    "tab": keyboard.Key.tab,
+    "f1": keyboard.Key.f1,
+    "f2": keyboard.Key.f2,
+    "f3": keyboard.Key.f3,
+    "f4": keyboard.Key.f4,
+    "f5": keyboard.Key.f5,
+    "f6": keyboard.Key.f6,
+    "f7": keyboard.Key.f7,
+    "f8": keyboard.Key.f8,
+    "f9": keyboard.Key.f9,
+    "f10": keyboard.Key.f10,
+    "f11": keyboard.Key.f11,
+    "f12": keyboard.Key.f12,
 }
 
 
