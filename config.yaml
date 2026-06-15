@@ -1,0 +1,18 @@
+# ASR Input 設定檔
+
+asr:
+  engine: qwen          # 可選: qwen, sensevoice, whisper (未來擴展)
+  model_id: "Qwen/Qwen3-ASR-1.7B"
+  device: cuda
+  language: "Chinese"
+  prompt: "以下是台灣繁體中文的語音轉錄。"
+
+audio:
+  sample_rate: 16000
+
+processing:
+  opencc_config: s2twp   # 簡體→台灣繁體（含慣用詞轉換）
+  tw_dict_path: data/tw_dict.yaml
+
+output:
+  method: clipboard      # 可選: clipboard, keyboard (未來擴展)
