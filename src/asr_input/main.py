@@ -7,7 +7,7 @@ import time
 print("正在載入 PyTorch（首次可能需要 30-60 秒）...", flush=True)
 
 from asr_input.asr import build_engine  # noqa: E402
-from asr_input.audio.capture import MicrophoneCapture  # noqa: E402
+from asr_input.audio.capture import AudioSource, MicrophoneCapture  # noqa: E402
 from asr_input.config import load_config  # noqa: E402
 from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
 from asr_input.processing.opencc_conv import OpenCCConverter  # noqa: E402
@@ -31,7 +31,35 @@ def build_pipeline(config: dict) -> ProcessingPipeline:
     return pipeline
 
 
-def main() -> None:
+def capture_and_transcribe(
+    source: AudioSource,
+    engine,
+    pipeline: ProcessingPipeline,
+    sample_rate: int,
+    wait_fn=lambda: None,
+) -> tuple[str, str] | None:
+    """One utterance: record -> transcribe -> post-process.
+
+    The core path shared by the real-mic CLI and the file-driven tests. `wait_fn` is
+    called between start() and stop(); for live mic it blocks until the user presses
+    Enter, for a FileAudioSource it is a no-op. Returns (raw, processed), or None if
+    no audio / no text was produced.
+    """
+    source.start()
+    wait_fn()
+    audio = source.stop()
+    if len(audio) == 0:
+        return None
+
+    raw_text = engine.transcribe(audio, sample_rate)
+    if not raw_text.strip():
+        return None
+
+    processed_text = pipeline.run(raw_text)
+    return raw_text, processed_text
+
+
+def main(audio_source: AudioSource | None = None) -> None:
     _ensure_utf8_stdout()
     config = load_config()
     asr_cfg = config["asr"]
@@ -48,7 +76,8 @@ def main() -> None:
     print("模型載入完成!")
     print()
 
-    mic = MicrophoneCapture(sample_rate=config["audio"]["sample_rate"])
+    sample_rate = config["audio"]["sample_rate"]
+    source = audio_source or MicrophoneCapture(sample_rate=sample_rate)
     pipeline = build_pipeline(config)
 
     print("操作方式: 按 Enter 開始錄音，再按 Enter 停止錄音")
@@ -61,26 +90,17 @@ def main() -> None:
             if user_input.lower() == "q":
                 break
 
-            mic.start()
             print("    🎤 錄音中... 按 Enter 停止")
             start_time = time.time()
-            input()
+            result = capture_and_transcribe(source, engine, pipeline, sample_rate, wait_fn=input)
             duration = time.time() - start_time
-            audio = mic.stop()
 
-            if len(audio) == 0:
-                print("    (沒有收到音訊)")
+            if result is None:
+                print("    (沒有收到音訊或沒有辨識到文字)")
                 continue
 
-            print(f"    錄音 {duration:.1f} 秒，辨識中...")
-            raw_text = engine.transcribe(audio, config["audio"]["sample_rate"])
-
-            if not raw_text.strip():
-                print("    (沒有辨識到文字)")
-                continue
-
-            processed_text = pipeline.run(raw_text)
-
+            raw_text, processed_text = result
+            print(f"    錄音 {duration:.1f} 秒")
             print(f"    原始: {raw_text}")
             print(f"    結果: {processed_text}")
             if config["output"]["method"] == "clipboard":
