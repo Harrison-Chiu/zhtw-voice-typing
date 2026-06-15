@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASR Input — 專案文件</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --bg-card: #1a1d27;
+            --bg-card-hover: #22263a;
+            --text: #e4e4e7;
+            --text-dim: #9ca3af;
+            --accent: #3b82f6;
+            --accent-dim: #2563eb;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --purple: #8b5cf6;
+            --red: #ef4444;
+            --border: #2d3348;
+            --code-bg: #161922;
+            --radius: 10px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 0;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e2030 0%, #0f1117 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 3rem 2rem 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .header h1 span { color: var(--accent); }
+        .header p { color: var(--text-dim); font-size: 0.95rem; }
+        .badges {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            background: var(--bg-card);
+        }
+        .badge.blue { border-color: var(--accent); color: var(--accent); }
+        .badge.green { border-color: var(--green); color: var(--green); }
+        .badge.orange { border-color: var(--orange); color: var(--orange); }
+
+        /* Nav tabs */
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav button {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            padding: 0.85rem 1.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .nav button:hover { color: var(--text); background: var(--bg-card-hover); }
+        .nav button.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Sections */
+        .content { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        h2 {
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; color: var(--text); }
+
+        p, li { color: var(--text-dim); margin-bottom: 0.5rem; }
+        ul { padding-left: 1.5rem; }
+        li { margin-bottom: 0.4rem; }
+
+        /* Pipeline diagram */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        .pipe-step {
+            flex-shrink: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem 1rem;
+            text-align: center;
+            min-width: 140px;
+            transition: all 0.2s;
+            cursor: default;
+        }
+        .pipe-step:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .pipe-step .icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
+        .pipe-step .name { font-weight: 600; font-size: 0.85rem; }
+        .pipe-step .file { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; font-family: monospace; }
+        .pipe-arrow {
+            flex-shrink: 0;
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            padding: 0 0.3rem;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            transition: border-color 0.2s;
+        }
+        .card:hover { border-color: var(--accent); }
+        .card .card-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .card .card-title .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .card p { font-size: 0.85rem; }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.2rem;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+        code {
+            font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+        }
+        .inline-code {
+            background: var(--code-bg);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            border: 1px solid var(--border);
+        }
+
+        /* Conversion demo */
+        .demo-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+        .demo-table th {
+            text-align: left;
+            padding: 0.6rem 1rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .demo-table td {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+        .demo-table .arrow-cell { text-align: center; color: var(--accent); width: 40px; }
+        .demo-table .result { color: var(--green); }
+
+        /* Status list */
+        .status-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+        }
+        .status-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; }
+        .status-text { font-size: 0.85rem; color: var(--text-dim); }
+        .status-text strong { color: var(--text); }
+
+        /* Roadmap */
+        .roadmap-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .roadmap-item:last-child { border-bottom: none; }
+        .roadmap-phase {
+            flex-shrink: 0;
+            width: 80px;
+            text-align: center;
+        }
+        .roadmap-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+        }
+        .tag-done { background: rgba(16,185,129,0.15); color: var(--green); }
+        .tag-next { background: rgba(59,130,246,0.15); color: var(--accent); }
+        .tag-future { background: rgba(139,92,246,0.15); color: var(--purple); }
+        .roadmap-content h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .roadmap-content p { font-size: 0.82rem; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 640px) {
+            .content { padding: 1.5rem 1rem; }
+            .nav button { padding: 0.7rem 1rem; font-size: 0.8rem; }
+            .pipeline { flex-direction: column; align-items: stretch; }
+            .pipe-arrow { transform: rotate(90deg); text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎤 ASR <span>Input</span></h1>
+    <p>本地語音輸入系統 — 台灣繁體中文</p>
+    <div class="badges">
+        <span class="badge blue">Qwen3-ASR 1.7B</span>
+        <span class="badge green">RTX 4060</span>
+        <span class="badge orange">OpenCC s2twp</span>
+        <span class="badge">Python 3.12</span>
+        <span class="badge">uv + ruff</span>
+    </div>
+</div>
+
+<div class="nav">
+    <button class="active" onclick="showTab('arch')">架構</button>
+    <button onclick="showTab('modules')">模組</button>
+    <button onclick="showTab('usage')">操作</button>
+    <button onclick="showTab('conversion')">繁中轉換</button>
+    <button onclick="showTab('roadmap')">後續計畫</button>
+</div>
+
+<!-- ===== 架構 ===== -->
+<div class="content">
+<div id="arch" class="section active">
+    <h2>系統架構</h2>
+    <p>模組化 pipeline 設計，每個環節可獨立抽換：</p>
+
+    <div class="pipeline">
+        <div class="pipe-step">
+            <div class="icon">🎤</div>
+            <div class="name">Audio Capture</div>
+            <div class="file">audio/capture.py</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+            <div class="icon">🧠</div>
+            <div class="name">ASR Engine</div>
+            <div class="file">asr/qwen.py</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+            <div class="icon">📝</div>
+            <div class="name">Text Processing</div>
+            <div class="file">processing/pipeline.py</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+            <div class="icon">📋</div>
+            <div class="name">Output</div>
+            <div class="file">output/clipboard.py</div>
+        </div>
+    </div>
+
+    <h3>專案結構</h3>
+    <pre><code>asr-input/
+├── config.yaml              # 設定檔（模型、快捷鍵、詞表）
+├── pyproject.toml           # 依賴 + ruff 設定
+├── src/asr_input/
+│   ├── main.py              # CLI 進入點
+│   ├── config.py            # 讀取 config.yaml
+│   ├── audio/capture.py     # 麥克風收音
+│   ├── asr/
+│   │   ├── base.py          # ASR 抽象介面
+│   │   └── qwen.py          # Qwen3-ASR 實作
+│   ├── processing/
+│   │   ├── pipeline.py      # 處理管線
+│   │   ├── opencc_conv.py   # OpenCC 簡轉繁
+│   │   └── tw_terms.py      # 台灣用語替換
+│   └── output/clipboard.py  # 剪貼簿輸出
+├── data/
+│   ├── tw_dict.yaml         # 自訂台灣用語詞表
+│   └── test_audio/          # 測試音檔
+└── tests/</code></pre>
+
+    <h3>設計原則</h3>
+    <ul>
+        <li><strong>模組化</strong> — 每個模組有統一的抽象介面，可以獨立替換（例如換 ASR 引擎不用動其他程式碼）</li>
+        <li><strong>Pipeline 模式</strong> — 文字後處理可串接多個步驟，順序執行</li>
+        <li><strong>Config 驅動</strong> — 所有設定集中在 config.yaml，不用改程式碼</li>
+    </ul>
+</div>
+
+<!-- ===== 模組 ===== -->
+<div id="modules" class="section">
+    <h2>模組說明</h2>
+
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Audio Capture</div>
+            <p>使用 <code class="inline-code">sounddevice</code> 從麥克風即時收音，16kHz 取樣率。</p>
+            <p>抽象介面 <code class="inline-code">AudioSource</code> 支援未來擴展（檔案輸入、串流等）。</p>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--orange)"></span> ASR Engine</div>
+            <p>目前使用 <strong>Qwen3-ASR-1.7B</strong>，佔用約 3.9GB VRAM。</p>
+            <p>抽象介面 <code class="inline-code">ASREngine</code>，可替換為 SenseVoice、Whisper 等。</p>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span> Text Processing</div>
+            <p><strong>OpenCC s2twp</strong>：簡體→台灣繁體 + 慣用詞轉換。</p>
+            <p><strong>TW Terms</strong>：自訂詞表補充 OpenCC 沒覆蓋的台灣用語。</p>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--purple)"></span> Output</div>
+            <p>目前：辨識結果複製到系統剪貼簿。</p>
+            <p>未來可擴展：模擬鍵盤輸入、API 輸出等。</p>
+        </div>
+    </div>
+
+    <h3>ASR 引擎比較</h3>
+    <table class="demo-table">
+        <tr><th>模型</th><th>參數</th><th>VRAM</th><th>中文品質</th><th>狀態</th></tr>
+        <tr><td>Qwen3-ASR 1.7B</td><td>1.7B</td><td>~3.9GB</td><td>很好</td><td style="color:var(--green)">✓ 已整合</td></tr>
+        <tr><td>SenseVoice-Small</td><td>234M</td><td>~1GB</td><td>很好</td><td style="color:var(--text-dim)">可替換</td></tr>
+        <tr><td>Whisper large-v3-turbo</td><td>809M</td><td>~3GB</td><td>很好</td><td style="color:var(--text-dim)">可替換</td></tr>
+        <tr><td>FireRedASR</td><td>—</td><td>—</td><td>中文 SOTA</td><td style="color:var(--text-dim)">待評估</td></tr>
+    </table>
+
+    <h3>工具鏈</h3>
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-title">uv</div>
+            <p>Rust 寫的 Python 套件管理工具。取代 pip + venv，速度快 10-100 倍，自動管理虛擬環境和鎖檔。</p>
+            <pre><code>uv add 套件名      # 安裝
+uv sync          # 同步環境
+uv run python    # 在 venv 中執行</code></pre>
+        </div>
+        <div class="card">
+            <div class="card-title">ruff</div>
+            <p>Rust 寫的 Python linter + formatter。取代 black + flake8 + isort，毫秒級速度。</p>
+            <pre><code>uv run ruff check .     # 檢查
+uv run ruff format .    # 格式化</code></pre>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 操作 ===== -->
+<div id="usage" class="section">
+    <h2>操作說明</h2>
+
+    <h3>啟動</h3>
+    <pre><code>cd D:\Harrison\code_test\asr-input
+uv run python -m asr_input.main</code></pre>
+
+    <h3>操作流程</h3>
+    <div class="status-item"><span class="status-icon">1️⃣</span><span class="status-text">程式啟動，<strong>載入模型</strong>（首次約 15 秒，之後有快取更快）</span></div>
+    <div class="status-item"><span class="status-icon">2️⃣</span><span class="status-text">按 <strong>Enter</strong> → 開始錄音 🎤</span></div>
+    <div class="status-item"><span class="status-icon">3️⃣</span><span class="status-text">講完話 → 再按 <strong>Enter</strong> 停止錄音</span></div>
+    <div class="status-item"><span class="status-icon">4️⃣</span><span class="status-text">等待辨識（通常 1-3 秒）</span></div>
+    <div class="status-item"><span class="status-icon">5️⃣</span><span class="status-text">結果自動轉為<strong>台灣繁中</strong> → 複製到<strong>剪貼簿</strong> 📋</span></div>
+    <div class="status-item"><span class="status-icon">🔁</span><span class="status-text">重複步驟 2-5，或輸入 <strong>q</strong> + Enter 退出</span></div>
+
+    <h3>測試音檔（不用麥克風）</h3>
+    <pre><code>uv run python test_audio_file.py</code></pre>
+    <p>會對 <code class="inline-code">data/test_audio/</code> 裡的 .m4a 檔逐個辨識。</p>
+
+    <h3>設定檔 (config.yaml)</h3>
+    <pre><code>asr:
+  engine: qwen
+  model_id: "Qwen/Qwen3-ASR-1.7B"
+  device: cuda
+  language: "Chinese"
+  prompt: "以下是台灣繁體中文的語音轉錄。"
+
+audio:
+  sample_rate: 16000
+
+processing:
+  opencc_config: s2twp
+  tw_dict_path: data/tw_dict.yaml
+
+output:
+  method: clipboard</code></pre>
+</div>
+
+<!-- ===== 繁中轉換 ===== -->
+<div id="conversion" class="section">
+    <h2>繁中轉換流程</h2>
+
+    <p>ASR 模型輸出的中文通常是簡體 + 中國用語，需要兩層後處理：</p>
+
+    <h3>第一層：OpenCC s2twp</h3>
+    <p>Open Chinese Convert — 開源中文繁簡轉換工具。<code class="inline-code">s2twp</code> 模式 = 簡體 → 台灣繁體 + 慣用詞轉換。</p>
+
+    <table class="demo-table">
+        <tr><th>ASR 原始輸出</th><th class="arrow-cell"></th><th>OpenCC 轉換後</th></tr>
+        <tr><td>我今天下载了一个软件</td><td class="arrow-cell">→</td><td class="result">我今天下載了一個軟體</td></tr>
+        <tr><td>这个视频的默认设置</td><td class="arrow-cell">→</td><td class="result">這個影片的預設設定</td></tr>
+        <tr><td>需要激活插件</td><td class="arrow-cell">→</td><td class="result">需要啟用外掛</td></tr>
+        <tr><td>请打印并上传到博客</td><td class="arrow-cell">→</td><td class="result">請列印並上傳到部落格</td></tr>
+    </table>
+
+    <h3>第二層：自訂台灣用語詞表</h3>
+    <p>補充 OpenCC 沒涵蓋到的替換，定義在 <code class="inline-code">data/tw_dict.yaml</code>：</p>
+    <table class="demo-table">
+        <tr><th>中國用語</th><th class="arrow-cell"></th><th>台灣用語</th></tr>
+        <tr><td>人工智能</td><td class="arrow-cell">→</td><td class="result">人工智慧</td></tr>
+        <tr><td>代碼</td><td class="arrow-cell">→</td><td class="result">程式碼</td></tr>
+        <tr><td>調用</td><td class="arrow-cell">→</td><td class="result">呼叫</td></tr>
+        <tr><td>交互</td><td class="arrow-cell">→</td><td class="result">互動</td></tr>
+        <tr><td>字節</td><td class="arrow-cell">→</td><td class="result">位元組</td></tr>
+    </table>
+    <p>可以隨時編輯 <code class="inline-code">data/tw_dict.yaml</code> 新增替換規則。</p>
+
+    <h3>Prompt 引導（第零層）</h3>
+    <p>在 ASR 推理時注入提示：<code class="inline-code">"以下是台灣繁體中文的語音轉錄。"</code></p>
+    <p>這是「軟性引導」，模型不一定會遵守，所以主要靠後面兩層處理確保品質。</p>
+</div>
+
+<!-- ===== 後續計畫 ===== -->
+<div id="roadmap" class="section">
+    <h2>後續計畫</h2>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-done">已完成</span></div>
+        <div class="roadmap-content">
+            <h4>v0.1 — 專案初始化 + 基礎 Pipeline</h4>
+            <p>Git + uv + ruff 工具鏈、模組化骨架、Qwen3-ASR 整合、OpenCC + 台灣詞表後處理、CLI 介面、音檔測試驗證</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-next">下一步</span></div>
+        <div class="roadmap-content">
+            <h4>v0.2 — VAD 切段 + 速度優化</h4>
+            <p>加入語音活動偵測（VAD），將長音訊切成短段逐段辨識。解決長音檔辨識變慢的問題，也為即時串流鋪路。可考慮 Silero VAD（輕量、準確）。</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-next">下一步</span></div>
+        <div class="roadmap-content">
+            <h4>v0.3 — 全域快捷鍵 + System Tray</h4>
+            <p>不用開終端機，按全域快捷鍵（例如 Ctrl+Shift+Space）直接開始/停止錄音。程式縮在系統匣常駐，辨識結果直接貼到游標位置或剪貼簿。</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-future">未來</span></div>
+        <div class="roadmap-content">
+            <h4>v0.4 — 即時串流辨識</h4>
+            <p>邊講邊出字，不用等錄完。需要 ASR 引擎支援 streaming mode（Paraformer 或 sherpa-onnx），或用 VAD 切段 + 快速推理模擬即時效果。</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-future">未來</span></div>
+        <div class="roadmap-content">
+            <h4>v0.5 — 多引擎支援</h4>
+            <p>實作 SenseVoice、Whisper 引擎，可在 config.yaml 切換。不同場景選不同引擎（速度 vs 品質）。</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-future">未來</span></div>
+        <div class="roadmap-content">
+            <h4>v0.6 — Web UI 測試介面</h4>
+            <p>瀏覽器介面，用於測試/展示/設定調整。可以上傳音檔測試、即時預覽轉換結果、編輯詞表。不取代日常使用的快捷鍵模式。</p>
+        </div>
+    </div>
+
+    <div class="roadmap-item">
+        <div class="roadmap-phase"><span class="roadmap-tag tag-future">未來</span></div>
+        <div class="roadmap-content">
+            <h4>探索 — 詞表 + 品質改善</h4>
+            <p>擴充台灣用語詞表、加入領域專用詞（技術/醫療/法律）、用 LLM 做最後一道潤稿、處理「平臺→平台」這類 OpenCC 過度轉換的問題。</p>
+        </div>
+    </div>
+</div>
+
+</div><!-- .content -->
+
+<div class="footer">
+    ASR Input v0.1.0 — Built with Qwen3-ASR, OpenCC, uv, ruff
+</div>
+
+<script>
+function showTab(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>
