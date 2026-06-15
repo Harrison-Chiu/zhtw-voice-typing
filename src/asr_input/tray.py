@@ -53,7 +53,7 @@ def _parse_hotkey(combo: str) -> set:
         if part in _KEY_MAP:
             keys.add(_KEY_MAP[part])
         elif len(part) == 1:
-            keys.add(keyboard.KeyCode.from_char(part))
+            keys.add(keyboard.KeyCode.from_vk(ord(part.upper())))
         else:
             raise ValueError(f"Unknown key in hotkey: {part!r}")
     return keys
@@ -126,8 +126,11 @@ class TrayApp:
 
     @staticmethod
     def _normalize_key(key: keyboard.Key | keyboard.KeyCode | None):
-        if isinstance(key, keyboard.KeyCode) and key.char:
-            return keyboard.KeyCode.from_char(key.char.lower())
+        if isinstance(key, keyboard.KeyCode):
+            if key.vk is not None:
+                return keyboard.KeyCode.from_vk(key.vk)
+            if key.char is not None:
+                return keyboard.KeyCode.from_vk(ord(key.char.upper()))
         return key
 
     def _toggle(self) -> None:
