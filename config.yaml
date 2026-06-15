@@ -1,11 +1,21 @@
 # ASR Input 設定檔
 
 asr:
-  engine: qwen          # 可選: qwen, sensevoice, whisper (未來擴展)
-  model_id: "Qwen/Qwen3-ASR-1.7B"
+  engine: whisper       # 可選: qwen, whisper
+
+  # --- whisper (faster-whisper) ---
+  # initial_prompt 會真的引導輸出字體與標點：短繁體句+全形標點 → 原生繁體+標點
+  model_id: "large-v3-turbo"
   device: cuda
-  language: "Chinese"
-  context: "以下是台灣繁體中文的語音轉錄。"
+  compute_type: float16
+  language: "zh"
+  initial_prompt: "繁體中文，台灣用語。"
+  beam_size: 5
+
+  # --- qwen (備用，context 對簡繁無效，僅靠後處理) ---
+  # model_id: "Qwen/Qwen3-ASR-1.7B"
+  # language: "Chinese"
+  # context: ""
 
 audio:
   sample_rate: 16000

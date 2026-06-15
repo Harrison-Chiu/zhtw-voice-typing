@@ -6,7 +6,7 @@ import time
 
 print("正在載入 PyTorch（首次可能需要 30-60 秒）...", flush=True)
 
-from asr_input.asr.qwen import QwenASREngine  # noqa: E402
+from asr_input.asr import build_engine  # noqa: E402
 from asr_input.audio.capture import MicrophoneCapture  # noqa: E402
 from asr_input.config import load_config  # noqa: E402
 from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
@@ -37,17 +37,13 @@ def main() -> None:
     asr_cfg = config["asr"]
 
     print("=== ASR Input — 台灣繁體中文語音輸入 ===")
+    print(f"引擎: {asr_cfg.get('engine', 'qwen')}")
     print(f"模型: {asr_cfg['model_id']}")
     print(f"裝置: {asr_cfg['device']}")
     print()
 
     print("載入模型中...")
-    engine = QwenASREngine(
-        model_id=asr_cfg["model_id"],
-        device=asr_cfg["device"],
-        language=asr_cfg.get("language"),
-        context=asr_cfg.get("context", ""),
-    )
+    engine = build_engine(asr_cfg)
     engine.load()
     print("模型載入完成!")
     print()

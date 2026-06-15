@@ -32,7 +32,9 @@ uv run ruff format src/              # 格式化
 
 - `src/asr_input/main.py` — CLI 進入點，串接整條 pipeline
 - `src/asr_input/asr/base.py` — ASR 引擎抽象介面（`ASREngine`）
+- `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
+- `src/asr_input/asr/whisper_fw.py` — faster-whisper 實作（**目前預設引擎**）
 - `src/asr_input/processing/pipeline.py` — `TextProcessor` 抽象介面 + `ProcessingPipeline` 串接器
 - `src/asr_input/processing/opencc_conv.py` — OpenCC s2twp 簡轉繁
 - `src/asr_input/processing/tw_terms.py` — 自訂台灣用語替換（讀 `data/tw_dict.yaml`）
@@ -44,15 +46,17 @@ uv run ruff format src/              # 格式化
 
 ### 擴展模式
 
-新增 ASR 引擎：繼承 `asr/base.py:ASREngine`，實作 `load()`、`transcribe()`、`unload()`。
+新增 ASR 引擎：繼承 `asr/base.py:ASREngine`，實作 `load()`、`transcribe()`、`unload()`，再到 `asr/__init__.py:build_engine()` 加一個分支。
 新增後處理步驟：繼承 `processing/pipeline.py:TextProcessor`，實作 `process()`，然後在 pipeline 中 `.add()` 即可。
 新增輸出方式：同樣繼承 `TextProcessor`（目前設計如此，之後可能獨立介面）。
 
 ## 已確立的設計決策（不要重做）
 
-- **ASR 引擎**：選定 Qwen3-ASR 1.7B 作為 MVP 引擎，佔 ~3.9GB VRAM
-- **繁中轉換策略**：ASR prompt 引導效果有限，主要靠 OpenCC s2twp + 自訂詞表後處理
+- **ASR 引擎**：**預設改用 faster-whisper large-v3-turbo**（~2GB VRAM、辨識 ~0.5s）。Qwen3-ASR 1.7B 保留為備用引擎。可在 `config.yaml` 的 `asr.engine` 切換（`whisper` / `qwen`）
+- **Whisper initial_prompt 能引導繁體+標點（已證實）**：短繁體句+全形標點（`繁體中文，台灣用語。`）→ 輸出原生 0% 簡體 + 帶標點。prompt 字體決定輸出字體、prompt 標點決定輸出標點，兩者獨立。詳見 `experiment_whisper_prompt.py`。這跟 Qwen 的 context 完全相反
+- **繁中轉換策略**：簡轉繁**只能靠** OpenCC s2twp + 自訂詞表後處理。context 引導已實驗證明**零效果**（見下）
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
+- **context 不能引導簡繁（已證實，勿重試）**：`experiment_context.py` 跑過 11 組探針（指令/關鍵詞/繁體前文/簡體前文/英文/否定/熱詞），輸出 byte 完全相同，簡體比例全 23.7%。context 進到了 prompt 的 system 訊息、模型也收到，但對「輸出簡體還是繁體」無作用；它的用途是罕見專有名詞的熱詞偏置。`language` 參數也只支援 `Chinese`，無繁體選項
 - **Python 環境**：uv 管理，Python 3.12，PyTorch CUDA 12.4 從專用 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff，line-length 100，規則集 E/F/I/UP/B/SIM
@@ -75,13 +79,14 @@ ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
 
 v0.1 — MVP 完成，CLI 可用。已驗證：
 - 模型載入 ✓、音檔辨識 ✓、麥克風辨識 ✓、簡轉繁 ✓、台灣用語替換 ✓
+- 多引擎切換 ✓（faster-whisper / Qwen），whisper 已設為預設、繁體+標點原生輸出 ✓
 
 ## 後續方向（尚未開始）
 
 - **VAD 切段** — 用 Silero VAD 將長音訊切成短段逐段辨識，改善長音訊速度
 - **全域快捷鍵 + System Tray** — 不用開終端機，按快捷鍵直接錄音
 - **即時串流辨識** — 邊講邊出字
-- **多引擎支援** — SenseVoice、Whisper 可在 config 切換
+- **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
 - **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
 - **詞表擴充** — 領域專用詞、OpenCC 過度轉換修正
 

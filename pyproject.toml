@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Local ASR input system for Traditional Chinese (Taiwan)"
 requires-python = ">=3.12"
 dependencies = [
+    "faster-whisper>=1.2.1",
     "numpy>=2.4.6",
     "opencc-python-reimplemented>=0.1.7",
     "pyyaml>=6.0.3",
