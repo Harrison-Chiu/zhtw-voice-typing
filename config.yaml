@@ -9,7 +9,7 @@ asr:
   device: cuda
   compute_type: float16
   language: "zh"
-  initial_prompt: "繁體中文，台灣用語。這是什麼？對，沒問題！"
+  initial_prompt: "繁體中文，台灣用語。"
   beam_size: 5
 
   # --- qwen (備用，context 對簡繁無效，僅靠後處理) ---
