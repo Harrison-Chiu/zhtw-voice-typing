@@ -4,13 +4,17 @@ import io
 import sys
 import time
 
-from asr_input.asr.qwen import QwenASREngine
-from asr_input.audio.capture import MicrophoneCapture
-from asr_input.config import load_config
-from asr_input.output.clipboard import ClipboardOutput
-from asr_input.processing.opencc_conv import OpenCCConverter
-from asr_input.processing.pipeline import ProcessingPipeline
-from asr_input.processing.tw_terms import TaiwanTermReplacer
+print("正在載入 PyTorch（首次可能需要 30-60 秒）...", flush=True)
+
+from asr_input.asr.qwen import QwenASREngine  # noqa: E402
+from asr_input.audio.capture import MicrophoneCapture  # noqa: E402
+from asr_input.config import load_config  # noqa: E402
+from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
+from asr_input.processing.opencc_conv import OpenCCConverter  # noqa: E402
+from asr_input.processing.pipeline import ProcessingPipeline  # noqa: E402
+from asr_input.processing.tw_terms import TaiwanTermReplacer  # noqa: E402
+
+print("PyTorch 載入完成。", flush=True)
 
 
 def _ensure_utf8_stdout() -> None:
@@ -42,7 +46,7 @@ def main() -> None:
         model_id=asr_cfg["model_id"],
         device=asr_cfg["device"],
         language=asr_cfg.get("language"),
-        prompt=asr_cfg.get("prompt"),
+        context=asr_cfg.get("context", ""),
     )
     engine.load()
     print("模型載入完成!")

@@ -12,12 +12,12 @@ class QwenASREngine(ASREngine):
         model_id: str = "Qwen/Qwen3-ASR-1.7B",
         device: str = "cuda",
         language: str | None = "Chinese",
-        prompt: str | None = None,
+        context: str = "",
     ) -> None:
         self.model_id = model_id
         self.device = device
         self.language = language
-        self.prompt = prompt
+        self.context = context
         self._model = None
 
     def load(self) -> None:
@@ -34,27 +34,12 @@ class QwenASREngine(ASREngine):
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
 
-        import tempfile
-
-        import soundfile as sf
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            sf.write(f.name, audio, sample_rate)
-            tmp_path = f.name
-
-        try:
-            kwargs = {"audio": tmp_path}
-            if self.language:
-                kwargs["language"] = self.language
-            if self.prompt:
-                kwargs["prompt"] = self.prompt
-
-            results = self._model.transcribe(**kwargs)
-            return results[0].text if results else ""
-        finally:
-            import os
-
-            os.unlink(tmp_path)
+        results = self._model.transcribe(
+            audio=(audio, sample_rate),
+            context=self.context,
+            language=self.language,
+        )
+        return results[0].text if results else ""
 
     def unload(self) -> None:
         if self._model is not None:

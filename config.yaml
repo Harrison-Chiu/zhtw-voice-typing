@@ -5,7 +5,7 @@ asr:
   model_id: "Qwen/Qwen3-ASR-1.7B"
   device: cuda
   language: "Chinese"
-  prompt: "以下是台灣繁體中文的語音轉錄。"
+  context: "以下是台灣繁體中文的語音轉錄。"
 
 audio:
   sample_rate: 16000

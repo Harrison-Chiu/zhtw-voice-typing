@@ -27,7 +27,7 @@ def main() -> None:
         model_id="Qwen/Qwen3-ASR-1.7B",
         device="cuda",
         language="Chinese",
-        prompt="以下是台灣繁體中文的語音轉錄。",
+        context="以下是台灣繁體中文的語音轉錄。",
     )
     engine.load()
     print(f"Model loaded. GPU: {torch.cuda.memory_allocated()/1024**2:.0f} MB")
