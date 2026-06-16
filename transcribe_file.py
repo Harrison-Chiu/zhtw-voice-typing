@@ -24,7 +24,7 @@ def transcribe_file(path: str) -> str:
     config = load_config()
     sample_rate = config["audio"]["sample_rate"]
 
-    engine = build_engine(config["asr"])
+    engine = build_engine(config["asr"], vad_cfg=config.get("vad"))
     engine.load()
     try:
         audio, _ = librosa.load(path, sr=sample_rate, mono=True)

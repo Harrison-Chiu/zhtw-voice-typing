@@ -94,7 +94,7 @@ class TrayApp:
         self._hotkey = _parse_hotkey(hotkey_str)
         self._hotkey_label = hotkey_str.replace("+", "+").upper()
 
-        self._engine = build_engine(asr_cfg)
+        self._engine = build_engine(asr_cfg, vad_cfg=self._config.get("vad"))
         self._source = MicrophoneCapture(sample_rate=self._sample_rate)
         self._pipeline = build_pipeline(self._config)
 

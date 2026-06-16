@@ -71,7 +71,7 @@ def main(audio_source: AudioSource | None = None) -> None:
     print()
 
     print("載入模型中...")
-    engine = build_engine(asr_cfg)
+    engine = build_engine(asr_cfg, vad_cfg=config.get("vad"))
     engine.load()
     print("模型載入完成!")
     print()

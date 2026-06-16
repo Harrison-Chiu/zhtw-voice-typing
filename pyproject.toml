@@ -9,6 +9,7 @@ dependencies = [
     "opencc-python-reimplemented>=0.1.7",
     "pyyaml>=6.0.3",
     "qwen-asr>=0.0.6",
+    "silero-vad>=5.1",
     "sounddevice>=0.5.5",
     "torch>=2.6.0",
     "torchaudio>=2.6.0",
