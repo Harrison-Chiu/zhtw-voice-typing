@@ -162,18 +162,25 @@ class StreamingSession:
     def _fallback_transcribe(
         self, audio: np.ndarray, probs: list[float]
     ) -> list[tuple[str, float, float]]:
-        """Try re-segmenting with shorter silence thresholds to avoid hallucination.
+        """Try re-segmenting with gradually shorter silence thresholds.
 
-        Tries each threshold on the full segment. If a shorter threshold produces
-        different sub-segments, transcribe them. If all sub-segments are clean,
-        return immediately. If any still hallucinates, try the next shorter threshold.
-        After exhausting all thresholds, return the last attempt's results.
+        Steps down from fallback_silence_ms[0] to fallback_silence_ms[-1] in
+        100ms increments. At each step, resegment (free — no model needed) and
+        check if it produces a different segmentation. On the first threshold
+        that yields a new split, transcribe the sub-segments. If any sub-segment
+        still hallucinates, continue stepping down and try the next new split.
 
         Returns list of (raw_text, audio_sec, transcribe_sec) for each sub-segment.
         """
-        last_results: list[tuple[str, float, float]] = []
+        start_ms = self._fallback_silence_ms[0]
+        end_ms = self._fallback_silence_ms[-1]
+        step_ms = 100
 
-        for silence_ms in self._fallback_silence_ms:
+        last_results: list[tuple[str, float, float]] = []
+        prev_seg_lens: tuple[int, ...] = (len(audio),)
+
+        silence_ms = start_ms
+        while silence_ms >= end_ms:
             sub_segments = StreamingVAD.resegment(
                 audio,
                 probs,
@@ -186,12 +193,15 @@ class StreamingSession:
             )
 
             if not sub_segments:
+                silence_ms -= step_ms
                 continue
 
-            is_different = len(sub_segments) > 1 or (
-                len(sub_segments) == 1 and len(sub_segments[0]) != len(audio)
-            )
-            if not is_different:
+            cur_seg_lens = tuple(len(s) for s in sub_segments)
+            is_new_split = cur_seg_lens != prev_seg_lens
+            prev_seg_lens = cur_seg_lens
+
+            if not is_new_split:
+                silence_ms -= step_ms
                 continue
 
             if self._verbose:
@@ -219,6 +229,8 @@ class StreamingSession:
             last_results = results
             if not any_hallucination:
                 return results
+
+            silence_ms -= step_ms
 
         return last_results
 

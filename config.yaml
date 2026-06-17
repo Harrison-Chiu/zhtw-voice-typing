@@ -46,7 +46,7 @@ streaming:
   max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（安全網）
   min_energy: 0.005          # RMS 能量門檻，低於此值的段不送辨識（防幻覺/誤觸）
   hallucination_threshold_sec: 1.5  # 轉錄時間超過此值判定為疑似幻覺
-  fallback_silence_ms: [500, 300]   # fallback 重切依序嘗試的靜音門檻（ms）
+  fallback_silence_ms: [500, 300]   # fallback 重切範圍 [起點, 底線]，每 100ms 遞減尋找最小切分
   verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
 hotkey:
