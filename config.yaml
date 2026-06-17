@@ -40,7 +40,12 @@ output:
 
 streaming:
   silence_trigger_ms: 1000   # 靜音多久觸發切句辨識（ms），建議 800-1200
-  max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（防止 Whisper 幻覺）
+  max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（安全網）
+  min_energy: 0.005          # RMS 能量門檻，低於此值的段不送辨識（防幻覺/誤觸）
+  adaptive_thresholds:       # 語音累積越長，靜音門檻越短（優先找自然斷點）
+    - { after_sec: 15, silence_ms: 800 }
+    - { after_sec: 20, silence_ms: 500 }
+    - { after_sec: 25, silence_ms: 300 }
 
 hotkey:
   combination: "ctrl+shift+space"   # 全域錄音切換快捷鍵

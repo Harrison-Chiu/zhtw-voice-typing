@@ -74,6 +74,13 @@ def main() -> None:
     def on_segment(seg_audio: np.ndarray) -> None:
         segments.append(seg_audio)
 
+    raw_adaptive = streaming_cfg.get("adaptive_thresholds")
+    adaptive = (
+        [(e["after_sec"], e["silence_ms"]) for e in raw_adaptive]
+        if raw_adaptive
+        else None
+    )
+
     vad = StreamingVAD(
         on_speech_segment=on_segment,
         sample_rate=sample_rate,
@@ -81,6 +88,9 @@ def main() -> None:
         min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
         silence_trigger_ms=silence_trigger_ms,
         speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
+        max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
+        adaptive_thresholds=adaptive,
+        min_energy=streaming_cfg.get("min_energy", 0.005),
     )
     vad.load(vad_model)
 

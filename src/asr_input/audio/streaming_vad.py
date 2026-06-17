@@ -9,6 +9,12 @@ from collections.abc import Callable
 import numpy as np
 import torch
 
+DEFAULT_ADAPTIVE_THRESHOLDS: list[tuple[float, int]] = [
+    (15.0, 800),
+    (20.0, 500),
+    (25.0, 300),
+]
+
 
 class StreamingVAD:
     """Feed audio chunks in; get speech segments out via callback.
@@ -29,14 +35,24 @@ class StreamingVAD:
         silence_trigger_ms: int = 1000,
         speech_pad_ms: int = 100,
         max_segment_sec: float = 30.0,
+        adaptive_thresholds: list[tuple[float, int]] | None = None,
+        min_energy: float = 0.005,
     ) -> None:
         self._on_speech_segment = on_speech_segment
         self._sample_rate = sample_rate
         self._threshold = threshold
         self._min_speech_samples = int(min_speech_ms * sample_rate / 1000)
-        self._silence_trigger_samples = int(silence_trigger_ms * sample_rate / 1000)
+        self._base_silence_trigger_samples = int(silence_trigger_ms * sample_rate / 1000)
         self._speech_pad_samples = int(speech_pad_ms * sample_rate / 1000)
         self._max_segment_samples = int(max_segment_sec * sample_rate)
+        self._min_energy = min_energy
+
+        if adaptive_thresholds is None:
+            adaptive_thresholds = DEFAULT_ADAPTIVE_THRESHOLDS
+        self._adaptive_thresholds = [
+            (int(sec * sample_rate), int(ms * sample_rate / 1000))
+            for sec, ms in sorted(adaptive_thresholds)
+        ]
 
         self._model: torch.jit.ScriptModule | None = None
 
@@ -82,6 +98,13 @@ class StreamingVAD:
         if self._in_speech and self._speech_buf:
             self._emit_segment()
 
+    def _current_silence_trigger(self) -> int:
+        """Return the effective silence trigger based on how long speech has accumulated."""
+        for after_samples, silence_samples in reversed(self._adaptive_thresholds):
+            if self._speech_samples >= after_samples:
+                return silence_samples
+        return self._base_silence_trigger_samples
+
     def _process_window(self, window: np.ndarray) -> None:
         tensor = torch.from_numpy(window)
         prob = self._model(tensor, self._sample_rate).item()
@@ -92,7 +115,6 @@ class StreamingVAD:
                 self._in_speech = True
                 self._silence_samples = 0
                 self._speech_samples = 0
-                # Prepend the pre-speech padding buffer
                 if self._pre_buf:
                     self._speech_buf.extend(self._pre_buf)
                     self._pre_buf.clear()
@@ -106,10 +128,9 @@ class StreamingVAD:
             if self._in_speech:
                 self._speech_buf.append(window)
                 self._silence_samples += len(window)
-                if self._silence_samples >= self._silence_trigger_samples:
+                if self._silence_samples >= self._current_silence_trigger():
                     self._emit_segment()
             else:
-                # Not in speech — maintain a rolling pre-buffer for padding
                 self._pre_buf.append(window)
                 self._pre_buf_samples += len(window)
                 while self._pre_buf_samples > self._speech_pad_samples and len(self._pre_buf) > 1:
@@ -128,8 +149,11 @@ class StreamingVAD:
             trim = self._silence_samples - self._speech_pad_samples
             audio = audio[: len(audio) - trim]
 
+        # Filter: minimum length + minimum energy (RMS)
         if len(audio) >= self._min_speech_samples:
-            self._on_speech_segment(audio)
+            rms = np.sqrt(np.mean(audio**2))
+            if rms >= self._min_energy:
+                self._on_speech_segment(audio)
 
         self._speech_buf.clear()
         self._in_speech = False

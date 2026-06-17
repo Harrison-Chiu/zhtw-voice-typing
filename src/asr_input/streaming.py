@@ -33,6 +33,8 @@ class StreamingSession:
         min_speech_ms: int = 250,
         speech_pad_ms: int = 100,
         max_segment_sec: float = 30.0,
+        adaptive_thresholds: list[tuple[float, int]] | None = None,
+        min_energy: float = 0.005,
         on_partial: Callable[[str, str], None] | None = None,
     ) -> None:
         self._engine = engine
@@ -54,6 +56,8 @@ class StreamingSession:
             silence_trigger_ms=silence_trigger_ms,
             speech_pad_ms=speech_pad_ms,
             max_segment_sec=max_segment_sec,
+            adaptive_thresholds=adaptive_thresholds,
+            min_energy=min_energy,
         )
         self._vad.load(vad_model)
 
