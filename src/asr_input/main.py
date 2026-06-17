@@ -13,6 +13,7 @@ from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
 from asr_input.output.transcript_log import log_transcript  # noqa: E402
 from asr_input.processing.opencc_conv import OpenCCConverter  # noqa: E402
 from asr_input.processing.pipeline import ProcessingPipeline  # noqa: E402
+from asr_input.processing.punct_norm import PunctuationNormalizer  # noqa: E402
 from asr_input.processing.tw_terms import TaiwanTermReplacer  # noqa: E402
 
 print("PyTorch 載入完成。", flush=True)
@@ -25,6 +26,7 @@ def _ensure_utf8_stdout() -> None:
 
 def build_pipeline(config: dict) -> ProcessingPipeline:
     pipeline = ProcessingPipeline()
+    pipeline.add(PunctuationNormalizer())
     pipeline.add(OpenCCConverter(config["processing"]["opencc_config"]))
     pipeline.add(TaiwanTermReplacer())
     if config["output"]["method"] == "clipboard":
