@@ -58,7 +58,8 @@ uv run ruff format src/              # 格式化
 - **ASR 引擎**：**預設改用 faster-whisper large-v3-turbo**（~2GB VRAM、辨識 ~0.5s）。Qwen3-ASR 1.7B 保留為備用引擎。可在 `config.yaml` 的 `asr.engine` 切換（`whisper` / `qwen`）
 - **Whisper initial_prompt 能引導繁體+標點（已證實）**：短繁體句+全形標點（`繁體中文，台灣用語。`）→ 輸出原生 0% 簡體 + 帶標點。prompt 字體決定輸出字體、prompt 標點決定輸出標點，兩者獨立。詳見 `experiment_whisper_prompt.py`。這跟 Qwen 的 context 完全相反
 - **標點全形化靠後處理，不靠 prompt（已證實，勿重試）**：三輪實驗（v1-v3）測試了 15+ 種 prompt、hotwords、suppress_tokens。結論：長 prompt 可提高全形率但引入亂碼/幻覺；hotwords 對多 token 標點無效；suppress 半形逗號會被句號取代。最穩方案是短 prompt + `PunctuationNormalizer` 後處理（看前後字元判斷中英文語境）。實驗結果見 `data/experiment_punct_v2.json`、`data/experiment_punct_v3.json`、`data/experiment_viewer.html`
-- **繁中轉換策略**：簡轉繁**只能靠** OpenCC s2twp + 自訂詞表後處理。context 引導已實驗證明**零效果**（見下）
+- **繁中轉換策略**：簡轉繁**只能靠** OpenCC s2twp + 自訂詞表後處理。context 引導已實驗證明**零效果**（見下）。OpenCC 設有智慧偵測：白名單排除「台」等台灣常用異體，其餘有任何簡體字才觸發轉換
+- **Hotwords 實驗結論（已證實）**：短詞 hotwords（`"詞表 待辦 清單"`）最安全不影響品質；長句 hotwords 會導致標點全變句號、重複句、幻覺。擴充 initial_prompt 也有副作用（如「開發平台→開發平臺」）。詳見 `data/experiment_hotwords.json`
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
 - **context 不能引導簡繁（已證實，勿重試）**：`experiment_context.py` 跑過 11 組探針（指令/關鍵詞/繁體前文/簡體前文/英文/否定/熱詞），輸出 byte 完全相同，簡體比例全 23.7%。context 進到了 prompt 的 system 訊息、模型也收到，但對「輸出簡體還是繁體」無作用；它的用途是罕見專有名詞的熱詞偏置。`language` 參數也只支援 `Chinese`，無繁體選項
 - **Python 環境**：uv 管理，Python 3.12，PyTorch CUDA 12.4 從專用 index 安裝
@@ -90,6 +91,7 @@ v0.2 — System Tray 版可用。已驗證：
 - **轉錄 log** ✓ — JSONL 格式，每筆含時間戳/原始/處理後文字
 - **智慧 OpenCC** ✓ — 偵測簡體字才跑轉換，純繁體跳過（避免項目→專案、台→臺等過度轉換）
 - **詞表清理** ✓ — 刪除 no-op、加 OpenCC 反向修正（平臺→平台）、分類整理
+- **Hotwords** ✓ — config.yaml 可設定，已配置常見辨識錯誤詞（詞表、待辦、清單等）
 
 ## 後續方向
 - **即時串流辨識** — 邊講邊出字
