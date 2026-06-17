@@ -19,9 +19,10 @@ import librosa
 import numpy as np
 from faster_whisper import WhisperModel
 
-SEGMENT_DIR = Path("data/test_audio/segments")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SEGMENT_DIR = PROJECT_ROOT / "data/test_audio/segments"
 SR = 16000
-OUT_FILE = Path("data/experiment_punct_v2.json")
+OUT_FILE = Path(__file__).resolve().parent / "results/experiment_punct_v2.json"
 
 PROMPTS = {
     "A_baseline": {

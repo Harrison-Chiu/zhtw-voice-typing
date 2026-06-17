@@ -14,8 +14,9 @@ import soundfile as sf
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-SEGMENTS_DIR = Path("data/test_audio/segments")
-RESULTS_FILE = Path("data/experiment_hotwords.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SEGMENTS_DIR = PROJECT_ROOT / "data/test_audio/segments"
+RESULTS_FILE = Path(__file__).resolve().parent / "results/experiment_hotwords.json"
 
 
 def load_audio(path: Path) -> tuple[np.ndarray, int]:

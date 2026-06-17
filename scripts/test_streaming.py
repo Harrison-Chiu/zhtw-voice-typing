@@ -29,8 +29,9 @@ from asr_input.config import load_config  # noqa: E402
 from asr_input.main import build_pipeline  # noqa: E402
 from asr_input.streaming import StreamingSession  # noqa: E402
 
-TEST_DIR = Path("data/test_audio")
-OUTPUT_PATH = Path("data/streaming_test_results.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+TEST_DIR = PROJECT_ROOT / "data/test_audio"
+OUTPUT_PATH = PROJECT_ROOT / "experiments/results/streaming_test_results.json"
 
 
 def main() -> None:

@@ -21,7 +21,8 @@ from asr_input.audio.capture import FileAudioSource  # noqa: E402
 from asr_input.config import load_config  # noqa: E402
 from asr_input.main import build_pipeline, capture_and_transcribe  # noqa: E402
 
-TEST_DIR = Path("data/test_audio")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+TEST_DIR = PROJECT_ROOT / "data/test_audio"
 
 
 def main() -> None:

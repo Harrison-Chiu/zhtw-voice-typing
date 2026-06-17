@@ -25,7 +25,8 @@ from opencc import OpenCC  # noqa: E402
 
 from asr_input.asr.qwen import QwenASREngine  # noqa: E402
 
-AUDIO = "data/test_audio/機器人展示，語音轉錄測試.m4a"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+AUDIO = str(PROJECT_ROOT / "data/test_audio/機器人展示，語音轉錄測試.m4a")
 
 # Same-domain paragraph, written once in Traditional (F) and once in Simplified (G)
 # so the ONLY difference is the script -> cleanest test of the continuation hypothesis.

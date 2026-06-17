@@ -30,8 +30,9 @@ from asr_input.config import load_config  # noqa: E402
 from asr_input.main import build_pipeline  # noqa: E402
 from asr_input.streaming import StreamingSession  # noqa: E402
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 HALLUCINATION_THRESHOLD_SEC = 1.5
-OUTPUT_PATH = Path("data/experiment_hallucination_fallback.json")
+OUTPUT_PATH = Path(__file__).resolve().parent / "results/experiment_hallucination_fallback.json"
 
 
 def transcribe_once(engine, audio, sample_rate):
@@ -213,7 +214,7 @@ def main():
     if len(sys.argv) > 1:
         audio_path = Path(sys.argv[1])
     else:
-        files = sorted(Path("data/test_audio").glob("*.m4a"))
+        files = sorted((PROJECT_ROOT / "data/test_audio").glob("*.m4a"))
         if not files:
             print("No audio files found in data/test_audio/")
             return

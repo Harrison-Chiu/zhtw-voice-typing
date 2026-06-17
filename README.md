@@ -49,7 +49,7 @@ uv run python -m asr_input.main
 
 ```bash
 # 把 .m4a/.wav 檔放進 data/test_audio/
-uv run python test_audio_file.py
+uv run python scripts/test_audio_file.py
 ```
 
 ## 架構

@@ -3,7 +3,7 @@
 Unlike Qwen3-ASR (whose `context` is inert for script), Whisper's `initial_prompt`
 biases output script AND punctuation: a short Traditional prompt with full-width
 punctuation yields native Traditional output with punctuation. See
-`experiment_whisper_prompt.py`.
+`experiments/experiment_whisper_prompt.py`.
 """
 
 import numpy as np

@@ -15,8 +15,9 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-SOURCE = Path("data/test_audio/簡報日.m4a")
-OUT_DIR = Path("data/test_audio/segments")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SOURCE = PROJECT_ROOT / "data/test_audio/簡報日.m4a"
+OUT_DIR = PROJECT_ROOT / "data/test_audio/segments"
 SR = 16000
 
 SEGMENTS = [

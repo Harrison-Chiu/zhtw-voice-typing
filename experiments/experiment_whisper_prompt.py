@@ -17,13 +17,15 @@ Run:
 import io
 import sys
 import time
+from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 from faster_whisper import WhisperModel  # noqa: E402
 from opencc import OpenCC  # noqa: E402
 
-AUDIO = "data/test_audio/機器人展示，語音轉錄測試.m4a"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+AUDIO = str(PROJECT_ROOT / "data/test_audio/機器人展示，語音轉錄測試.m4a")
 _s2t = OpenCC("s2t")
 _PUNCT = "，。、！？；：「」（）"
 
