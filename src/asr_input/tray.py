@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import signal
 import threading
 
 import pystray
@@ -22,18 +23,21 @@ class State(enum.Enum):
     LOADING = "loading"
     IDLE = "idle"
     STREAMING = "streaming"
+    TRANSCRIBING = "transcribing"
 
 
 COLORS = {
     State.LOADING: "#888888",
     State.IDLE: "#4CAF50",
     State.STREAMING: "#F44336",
+    State.TRANSCRIBING: "#FF9800",
 }
 
 LABELS = {
     State.LOADING: "載入模型中...",
     State.IDLE: "待機（按快捷鍵錄音）",
     State.STREAMING: "串流辨識中...",
+    State.TRANSCRIBING: "辨識中...",
 }
 
 DEFAULT_HOTKEY = "ctrl+shift+space"
@@ -101,6 +105,7 @@ class TrayApp:
 
         streaming_cfg = self._config.get("streaming", {})
         self._silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
+        self._verbose = streaming_cfg.get("verbose", False)
 
         # Build ASR engine WITHOUT VadSegmentedEngine wrapper —
         # streaming mode handles segmentation via StreamingVAD.
@@ -125,6 +130,13 @@ class TrayApp:
             title="ASR Input",
             menu=menu,
         )
+
+        def _handle_sigint(sig, frame):
+            print("\nCtrl+C — 安全退出中...", flush=True)
+            self._on_quit(self._tray, None)
+
+        signal.signal(signal.SIGINT, _handle_sigint)
+
         threading.Thread(target=self._setup, daemon=True).start()
         self._tray.run()
 
@@ -178,26 +190,23 @@ class TrayApp:
         vad_cfg = self._config.get("vad", {})
         streaming_cfg = self._config.get("streaming", {})
 
-        raw_adaptive = streaming_cfg.get("adaptive_thresholds")
-        adaptive = (
-            [(e["after_sec"], e["silence_ms"]) for e in raw_adaptive]
-            if raw_adaptive
-            else None
-        )
-
         self._session = StreamingSession(
             engine=self._engine,
             pipeline=self._pipeline,
             vad_model=self._vad_model,
             sample_rate=self._sample_rate,
             silence_trigger_ms=self._silence_trigger_ms,
+            silence_min_ms=streaming_cfg.get("silence_min_ms", 300),
+            ramp_start_sec=streaming_cfg.get("ramp_start_sec", 10.0),
+            ramp_end_sec=streaming_cfg.get("ramp_end_sec", 25.0),
             vad_threshold=vad_cfg.get("threshold", 0.5),
             min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
             speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
             max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
-            adaptive_thresholds=adaptive,
             min_energy=streaming_cfg.get("min_energy", 0.005),
             on_partial=self._on_partial_result,
+            on_transcribing=self._on_transcribing,
+            verbose=self._verbose,
         )
         self._session.start()
         self._set_state(State.STREAMING)
@@ -224,10 +233,21 @@ class TrayApp:
         _silent_notify(self._tray, notify_text, "ASR Input")
         self._set_state(State.IDLE)
 
+    def _on_transcribing(self, audio_sec: float) -> None:
+        """Called when a segment starts being transcribed — flash orange."""
+        if self._tray:
+            self._tray.icon = _make_icon(COLORS[State.TRANSCRIBING])
+            self._tray.title = f"ASR — 辨識 {audio_sec:.0f}s 音訊中..."
+
     def _on_partial_result(self, latest_segment: str, accumulated: str) -> None:
         """Called from worker thread when a segment is transcribed."""
         if self._tray:
-            self._tray.title = f"ASR Input — {latest_segment[:60]}"
+            seg_count = self._session.segment_count if self._session else 0
+            char_count = len(accumulated)
+            self._tray.icon = _make_icon(COLORS[State.STREAMING])
+            self._tray.title = (
+                f"ASR — {seg_count}段 {char_count}字 | {latest_segment[:50]}"
+            )
 
     def _set_state(self, state: State) -> None:
         self._state = state

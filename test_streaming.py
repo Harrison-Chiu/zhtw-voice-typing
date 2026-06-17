@@ -15,7 +15,7 @@ import io
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -72,14 +72,6 @@ def main() -> None:
     vad_model, _ = torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True)
     print("模型載入完成!\n")
 
-    # Parse adaptive thresholds from config
-    raw_adaptive = streaming_cfg.get("adaptive_thresholds")
-    adaptive = (
-        [(e["after_sec"], e["silence_ms"]) for e in raw_adaptive]
-        if raw_adaptive
-        else None
-    )
-
     # Run full streaming pipeline (same code path as TrayApp)
     session = StreamingSession(
         engine=engine,
@@ -87,11 +79,13 @@ def main() -> None:
         vad_model=vad_model,
         sample_rate=sample_rate,
         silence_trigger_ms=silence_trigger_ms,
+        silence_min_ms=streaming_cfg.get("silence_min_ms", 300),
+        ramp_start_sec=streaming_cfg.get("ramp_start_sec", 10.0),
+        ramp_end_sec=streaming_cfg.get("ramp_end_sec", 25.0),
         vad_threshold=vad_cfg.get("threshold", 0.5),
         min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
         speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
         max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
-        adaptive_thresholds=adaptive,
         min_energy=streaming_cfg.get("min_energy", 0.005),
     )
 
@@ -111,13 +105,15 @@ def main() -> None:
     # Build JSON report
     report = {
         "meta": {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "audio_file": audio_path.name,
             "audio_total_sec": round(audio_sec, 1),
             "engine": f"{asr_cfg.get('engine', 'qwen')} / {asr_cfg['model_id']}",
             "silence_trigger_ms": silence_trigger_ms,
+            "silence_min_ms": streaming_cfg.get("silence_min_ms", 300),
+            "ramp_start_sec": streaming_cfg.get("ramp_start_sec", 10.0),
+            "ramp_end_sec": streaming_cfg.get("ramp_end_sec", 25.0),
             "max_segment_sec": streaming_cfg.get("max_segment_sec", 30.0),
-            "adaptive_thresholds": raw_adaptive,
             "min_energy": streaming_cfg.get("min_energy", 0.005),
             "total_transcribe_sec": round(total_time, 1),
         },

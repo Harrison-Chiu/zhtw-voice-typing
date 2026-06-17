@@ -39,13 +39,13 @@ output:
   method: clipboard      # 可選: clipboard, keyboard (未來擴展)
 
 streaming:
-  silence_trigger_ms: 1000   # 靜音多久觸發切句辨識（ms），建議 800-1200
+  silence_trigger_ms: 1000   # 起點：靜音多久觸發切句（ms）
+  silence_min_ms: 300        # 終點：語音累積夠長時的最短靜音門檻（ms）
+  ramp_start_sec: 10.0       # 幾秒後開始遞減（之前固定用 silence_trigger_ms）
+  ramp_end_sec: 25.0         # 幾秒時到達 silence_min_ms（之後固定用 silence_min_ms）
   max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（安全網）
   min_energy: 0.005          # RMS 能量門檻，低於此值的段不送辨識（防幻覺/誤觸）
-  adaptive_thresholds:       # 語音累積越長，靜音門檻越短（優先找自然斷點）
-    - { after_sec: 15, silence_ms: 800 }
-    - { after_sec: 20, silence_ms: 500 }
-    - { after_sec: 25, silence_ms: 300 }
+  verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
 hotkey:
   combination: "ctrl+shift+space"   # 全域錄音切換快捷鍵

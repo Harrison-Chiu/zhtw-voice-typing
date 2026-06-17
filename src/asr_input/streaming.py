@@ -29,18 +29,25 @@ class StreamingSession:
         vad_model: torch.jit.ScriptModule,
         sample_rate: int = 16000,
         silence_trigger_ms: int = 1000,
+        silence_min_ms: int = 300,
+        ramp_start_sec: float = 10.0,
+        ramp_end_sec: float = 25.0,
         vad_threshold: float = 0.5,
         min_speech_ms: int = 250,
         speech_pad_ms: int = 100,
         max_segment_sec: float = 30.0,
-        adaptive_thresholds: list[tuple[float, int]] | None = None,
         min_energy: float = 0.005,
         on_partial: Callable[[str, str], None] | None = None,
+        on_transcribing: Callable[[float], None] | None = None,
+        verbose: bool = False,
     ) -> None:
         self._engine = engine
         self._pipeline = pipeline
         self._sample_rate = sample_rate
         self._on_partial = on_partial
+        self._on_transcribing = on_transcribing
+        self._verbose = verbose
+        self._session_start: float = 0
 
         self._segments: list[str] = []
         self._segment_stats: list[dict] = []
@@ -55,10 +62,13 @@ class StreamingSession:
             threshold=vad_threshold,
             min_speech_ms=min_speech_ms,
             silence_trigger_ms=silence_trigger_ms,
+            silence_min_ms=silence_min_ms,
+            ramp_start_sec=ramp_start_sec,
+            ramp_end_sec=ramp_end_sec,
             speech_pad_ms=speech_pad_ms,
             max_segment_sec=max_segment_sec,
-            adaptive_thresholds=adaptive_thresholds,
             min_energy=min_energy,
+            verbose=verbose,
         )
         self._vad.load(vad_model)
 
@@ -110,6 +120,7 @@ class StreamingSession:
         self._segment_stats.clear()
         self._vad.reset()
         self._stop_event.clear()
+        self._session_start = time.time()
         self._worker = threading.Thread(target=self._transcribe_loop, daemon=True)
         self._worker.start()
 
@@ -141,6 +152,9 @@ class StreamingSession:
             audio_sec = len(segment_audio) / self._sample_rate
             rms = float(np.sqrt(np.mean(segment_audio**2)))
 
+            if self._on_transcribing:
+                self._on_transcribing(audio_sec)
+
             t0 = time.time()
             raw_text = self._engine.transcribe(segment_audio, self._sample_rate)
             dt = time.time() - t0
@@ -170,8 +184,10 @@ class StreamingSession:
                 "empty": False,
             })
 
+            seg_num = len(self._segments)
+            warn = " ⚠幻覺?" if dt > 1.5 else ""
             print(
-                f"  [串流] {audio_sec:.1f}s 音訊 → {dt:.1f}s 辨識: {processed}",
+                f"  [#{seg_num}] {audio_sec:.1f}s→{dt:.1f}s{warn} | {processed}",
                 flush=True,
             )
 
