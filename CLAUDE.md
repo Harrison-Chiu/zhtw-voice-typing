@@ -29,10 +29,19 @@ uv run ruff format src/              # 格式化
         audio/capture.py  asr/qwen.py  processing/*  output/clipboard.py
 ```
 
+串流模式（Tray 預設）：
+```
+麥克風 → StreamingVAD（即時切句）→ ASREngine（逐句辨識）→ Pipeline → 累積 → 一次複製
+              │                          │                      │
+    audio/streaming_vad.py          asr/whisper_fw.py     processing/*
+                        ↑ 協調器: streaming.py ↑
+```
+
 ### 關鍵檔案
 
 - `src/asr_input/main.py` — CLI 進入點，串接整條 pipeline
-- `src/asr_input/tray.py` — System Tray 進入點（全域快捷鍵 + 常駐 tray）
+- `src/asr_input/tray.py` — System Tray 進入點（全域快捷鍵 + 串流辨識）
+- `src/asr_input/streaming.py` — `StreamingSession` 協調器（VAD + ASR + pipeline 串流整合）
 - `src/asr_input/asr/base.py` — ASR 引擎抽象介面（`ASREngine`）
 - `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
@@ -42,8 +51,9 @@ uv run ruff format src/              # 格式化
 - `src/asr_input/processing/opencc_conv.py` — 智慧 OpenCC：偵測到簡體字才跑 s2twp 轉換，純繁體跳過
 - `src/asr_input/processing/tw_terms.py` — 自訂台灣用語替換（讀 `data/tw_dict.yaml`）
 - `src/asr_input/audio/capture.py` — `AudioSource` 抽象介面 + `MicrophoneCapture` 實作
+- `src/asr_input/audio/streaming_vad.py` — `StreamingVAD`：即時逐 chunk 餵入 Silero VAD，靜音觸發切句
 - `src/asr_input/output/clipboard.py` — 剪貼簿輸出
-- `config.yaml` — 使用者設定（模型、裝置、語言、後處理選項）
+- `config.yaml` — 使用者設定（模型、裝置、語言、後處理選項、串流參數）
 - `data/tw_dict.yaml` — 台灣用語替換詞表
 - `docs/index.html` — 互動式專案文件頁面
 
@@ -82,11 +92,12 @@ ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
 
 ## 目前狀態
 
-v0.2 — System Tray 版可用。已驗證：
+v0.3 — 串流辨識可用。已驗證：
 - 模型載入 ✓、音檔辨識 ✓、麥克風辨識 ✓、簡轉繁 ✓、台灣用語替換 ✓
 - 多引擎切換 ✓（faster-whisper / Qwen），whisper 已設為預設、繁體+標點原生輸出 ✓
 - **全域快捷鍵 + System Tray** ✓ — `pynput` 熱鍵 + `pystray` 常駐 tray，Toggle 模式
-- **VAD 切段** ✓ — Silero VAD 自適應切段（800ms→500ms→300ms 遞減），裝飾器模式包裝引擎
+- **即時串流辨識** ✓ — StreamingVAD 即時切句（1000ms 靜音門檻）+ 逐句辨識 + 結束時一次複製。475s 長音檔驗證：26 段，最慢 3.4s/段，無幻覺
+- **VAD 切段** ✓ — Silero VAD 自適應切段（800ms→500ms→300ms 遞減），裝飾器模式包裝引擎（批次模式用）
 - **標點正規化** ✓ — 上下文感知半形→全形轉換，Pipeline 第一步（標點→OpenCC→詞表→輸出）
 - **轉錄 log** ✓ — JSONL 格式，每筆含時間戳/原始/處理後文字
 - **智慧 OpenCC** ✓ — 偵測簡體字才跑轉換，純繁體跳過（避免項目→專案、台→臺等過度轉換）
@@ -94,7 +105,6 @@ v0.2 — System Tray 版可用。已驗證：
 - **Hotwords** ✓ — config.yaml 可設定，已配置常見辨識錯誤詞（詞表、待辦、清單等）
 
 ## 後續方向
-- **即時串流辨識** — 邊講邊出字
 - **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿
 - **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
 - **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
