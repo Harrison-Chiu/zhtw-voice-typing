@@ -43,6 +43,7 @@ class StreamingSession:
         self._on_partial = on_partial
 
         self._segments: list[str] = []
+        self._segment_stats: list[dict] = []
         self._segment_queue: queue.Queue[np.ndarray | None] = queue.Queue()
         self._worker: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -99,8 +100,14 @@ class StreamingSession:
 
         return "".join(self._segments)
 
+    @property
+    def segment_stats(self) -> list[dict]:
+        """Per-segment statistics: audio_sec, transcribe_sec, ratio, raw, processed."""
+        return list(self._segment_stats)
+
     def _begin(self) -> None:
         self._segments.clear()
+        self._segment_stats.clear()
         self._vad.reset()
         self._stop_event.clear()
         self._worker = threading.Thread(target=self._transcribe_loop, daemon=True)
@@ -131,17 +138,38 @@ class StreamingSession:
             if segment_audio is None:
                 break
 
+            audio_sec = len(segment_audio) / self._sample_rate
+            rms = float(np.sqrt(np.mean(segment_audio**2)))
+
             t0 = time.time()
             raw_text = self._engine.transcribe(segment_audio, self._sample_rate)
             dt = time.time() - t0
 
             if not raw_text.strip():
+                self._segment_stats.append({
+                    "audio_sec": round(audio_sec, 2),
+                    "transcribe_sec": round(dt, 2),
+                    "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
+                    "rms": round(rms, 5),
+                    "raw": "",
+                    "processed": "",
+                    "empty": True,
+                })
                 continue
 
             processed = self._pipeline.run(raw_text)
             self._segments.append(processed)
 
-            audio_sec = len(segment_audio) / self._sample_rate
+            self._segment_stats.append({
+                "audio_sec": round(audio_sec, 2),
+                "transcribe_sec": round(dt, 2),
+                "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
+                "rms": round(rms, 5),
+                "raw": raw_text,
+                "processed": processed,
+                "empty": False,
+            })
+
             print(
                 f"  [串流] {audio_sec:.1f}s 音訊 → {dt:.1f}s 辨識: {processed}",
                 flush=True,

@@ -4,14 +4,18 @@ Feeds an audio file through the full StreamingSession pipeline (the same
 code path used by TrayApp), using start_from_file() to simulate microphone
 input. This verifies VAD + ASR + post-processing end-to-end.
 
+Outputs a JSON report to data/streaming_test_results.json.
+
 Usage:
     .venv\\Scripts\\python.exe test_streaming.py [audio_path]
     (no args -> first .m4a in data/test_audio/)
 """
 
 import io
+import json
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -26,6 +30,7 @@ from asr_input.main import build_pipeline  # noqa: E402
 from asr_input.streaming import StreamingSession  # noqa: E402
 
 TEST_DIR = Path("data/test_audio")
+OUTPUT_PATH = Path("data/streaming_test_results.json")
 
 
 def main() -> None:
@@ -96,11 +101,57 @@ def main() -> None:
     full_text = session.stop()
     total_time = time.time() - t0
 
+    stats = session.segment_stats
+    audio_durations = [s["audio_sec"] for s in stats]
+    transcribe_times = [s["transcribe_sec"] for s in stats]
+
     print(f"\n=== 完整結果（{session.segment_count} 段, {total_time:.1f}s）===")
     print(full_text or "（沒有辨識到文字）")
 
+    # Build JSON report
+    report = {
+        "meta": {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "audio_file": audio_path.name,
+            "audio_total_sec": round(audio_sec, 1),
+            "engine": f"{asr_cfg.get('engine', 'qwen')} / {asr_cfg['model_id']}",
+            "silence_trigger_ms": silence_trigger_ms,
+            "max_segment_sec": streaming_cfg.get("max_segment_sec", 30.0),
+            "adaptive_thresholds": raw_adaptive,
+            "min_energy": streaming_cfg.get("min_energy", 0.005),
+            "total_transcribe_sec": round(total_time, 1),
+        },
+        "summary": {
+            "total_segments": len(stats),
+            "empty_segments": sum(1 for s in stats if s["empty"]),
+            "audio_sec_min": round(min(audio_durations), 2) if audio_durations else 0,
+            "audio_sec_max": round(max(audio_durations), 2) if audio_durations else 0,
+            "audio_sec_avg": round(np.mean(audio_durations), 2) if audio_durations else 0,
+            "audio_sec_median": round(float(np.median(audio_durations)), 2)
+            if audio_durations
+            else 0,
+            "transcribe_sec_min": round(min(transcribe_times), 2)
+            if transcribe_times
+            else 0,
+            "transcribe_sec_max": round(max(transcribe_times), 2)
+            if transcribe_times
+            else 0,
+            "transcribe_sec_avg": round(np.mean(transcribe_times), 2)
+            if transcribe_times
+            else 0,
+            "realtime_factor": round(audio_sec / total_time, 1) if total_time > 0 else 0,
+        },
+        "segments": [{"index": i + 1, **s} for i, s in enumerate(stats)],
+        "full_text": full_text,
+    }
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"\n報告已輸出: {OUTPUT_PATH}")
+
     engine.unload()
-    print("\nDone!")
+    print("Done!")
 
 
 if __name__ == "__main__":
