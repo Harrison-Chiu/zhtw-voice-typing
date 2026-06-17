@@ -6,35 +6,34 @@ import enum
 import threading
 
 import pystray
+import torch
 from PIL import Image, ImageDraw
 from pynput import keyboard
 
 from asr_input.asr import build_engine
-from asr_input.audio.capture import MicrophoneCapture
 from asr_input.config import load_config
 from asr_input.main import build_pipeline
+from asr_input.output.clipboard import ClipboardOutput
 from asr_input.output.transcript_log import log_transcript
+from asr_input.streaming import StreamingSession
 
 
 class State(enum.Enum):
     LOADING = "loading"
     IDLE = "idle"
-    RECORDING = "recording"
-    PROCESSING = "processing"
+    STREAMING = "streaming"
 
 
 COLORS = {
     State.LOADING: "#888888",
     State.IDLE: "#4CAF50",
-    State.RECORDING: "#F44336",
-    State.PROCESSING: "#2196F3",
+    State.STREAMING: "#F44336",
 }
 
 LABELS = {
     State.LOADING: "載入模型中...",
     State.IDLE: "待機（按快捷鍵錄音）",
-    State.RECORDING: "錄音中...",
-    State.PROCESSING: "辨識中...",
+    State.STREAMING: "串流辨識中...",
 }
 
 DEFAULT_HOTKEY = "ctrl+shift+space"
@@ -47,18 +46,7 @@ _KEY_MAP = {
     "space": keyboard.Key.space,
     "esc": keyboard.Key.esc,
     "tab": keyboard.Key.tab,
-    "f1": keyboard.Key.f1,
-    "f2": keyboard.Key.f2,
-    "f3": keyboard.Key.f3,
-    "f4": keyboard.Key.f4,
-    "f5": keyboard.Key.f5,
-    "f6": keyboard.Key.f6,
-    "f7": keyboard.Key.f7,
-    "f8": keyboard.Key.f8,
-    "f9": keyboard.Key.f9,
-    "f10": keyboard.Key.f10,
-    "f11": keyboard.Key.f11,
-    "f12": keyboard.Key.f12,
+    **{f"f{i}": getattr(keyboard.Key, f"f{i}") for i in range(1, 13)},
 }
 
 
@@ -111,10 +99,18 @@ class TrayApp:
         self._hotkey = _parse_hotkey(hotkey_str)
         self._hotkey_label = hotkey_str.replace("+", "+").upper()
 
-        self._engine = build_engine(asr_cfg, vad_cfg=self._config.get("vad"))
-        self._source = MicrophoneCapture(sample_rate=self._sample_rate)
-        self._pipeline = build_pipeline(self._config)
+        streaming_cfg = self._config.get("streaming", {})
+        self._silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
 
+        # Build ASR engine WITHOUT VadSegmentedEngine wrapper —
+        # streaming mode handles segmentation via StreamingVAD.
+        self._engine = build_engine(asr_cfg, vad_cfg=None)
+        # Text processing without clipboard (streaming copies once at the end)
+        self._pipeline = build_pipeline(self._config, include_output=False)
+        self._clipboard = ClipboardOutput()
+
+        self._vad_model: torch.jit.ScriptModule | None = None
+        self._session: StreamingSession | None = None
         self._tray: pystray.Icon | None = None
 
     def run(self) -> None:
@@ -135,9 +131,15 @@ class TrayApp:
     def _setup(self) -> None:
         print("載入模型中...", flush=True)
         self._engine.load()
-        print("模型載入完成!", flush=True)
+        print("ASR 模型載入完成!", flush=True)
+
+        print("載入 VAD 模型...", flush=True)
+        model, _ = torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True)
+        self._vad_model = model
+        print("VAD 模型載入完成!", flush=True)
+
         self._set_state(State.IDLE)
-        print(f"快捷鍵: {self._hotkey_label}（錄音切換）", flush=True)
+        print(f"快捷鍵: {self._hotkey_label}（串流錄音切換）", flush=True)
         _silent_notify(self._tray, f"就緒 — {self._hotkey_label} 開始錄音", "ASR Input")
         self._listen_hotkey()
 
@@ -168,35 +170,54 @@ class TrayApp:
     def _toggle(self) -> None:
         with self._lock:
             if self._state == State.IDLE:
-                self._set_state(State.RECORDING)
-                self._source.start()
-                print("🎤 錄音中...", flush=True)
-            elif self._state == State.RECORDING:
-                self._set_state(State.PROCESSING)
-                threading.Thread(target=self._finish_recording, daemon=True).start()
+                self._start_streaming()
+            elif self._state == State.STREAMING:
+                threading.Thread(target=self._stop_streaming, daemon=True).start()
 
-    def _finish_recording(self) -> None:
-        audio = self._source.stop()
-        if len(audio) == 0:
-            print("（沒有收到音訊）", flush=True)
+    def _start_streaming(self) -> None:
+        vad_cfg = self._config.get("vad", {})
+        streaming_cfg = self._config.get("streaming", {})
+        self._session = StreamingSession(
+            engine=self._engine,
+            pipeline=self._pipeline,
+            vad_model=self._vad_model,
+            sample_rate=self._sample_rate,
+            silence_trigger_ms=self._silence_trigger_ms,
+            vad_threshold=vad_cfg.get("threshold", 0.5),
+            min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
+            speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
+            max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
+            on_partial=self._on_partial_result,
+        )
+        self._session.start()
+        self._set_state(State.STREAMING)
+        print("🎤 串流辨識中... 按快捷鍵停止", flush=True)
+
+    def _stop_streaming(self) -> None:
+        if self._session is None:
             self._set_state(State.IDLE)
             return
 
-        print("辨識中...", flush=True)
-        raw_text = self._engine.transcribe(audio, self._sample_rate)
-        if not raw_text.strip():
+        full_text = self._session.stop()
+        segment_count = self._session.segment_count
+        self._session = None
+
+        if not full_text.strip():
             print("（沒有辨識到文字）", flush=True)
             self._set_state(State.IDLE)
             return
 
-        audio_sec = len(audio) / self._sample_rate
-        processed_text = self._pipeline.run(raw_text)
-        print(f"原始: {raw_text}", flush=True)
-        print(f"結果: {processed_text}", flush=True)
-        log_transcript(raw_text, processed_text, audio_duration_sec=audio_sec)
-        notify_text = processed_text[:250] + "…" if len(processed_text) > 250 else processed_text
+        self._clipboard.process(full_text)
+        log_transcript("(streaming)", full_text, audio_duration_sec=0)
+        print(f"完成: {segment_count} 段, 結果: {full_text}", flush=True)
+        notify_text = full_text[:250] + "…" if len(full_text) > 250 else full_text
         _silent_notify(self._tray, notify_text, "ASR Input")
         self._set_state(State.IDLE)
+
+    def _on_partial_result(self, latest_segment: str, accumulated: str) -> None:
+        """Called from worker thread when a segment is transcribed."""
+        if self._tray:
+            self._tray.title = f"ASR Input — {latest_segment[:60]}"
 
     def _set_state(self, state: State) -> None:
         self._state = state
@@ -206,6 +227,9 @@ class TrayApp:
 
     def _on_quit(self, icon, item) -> None:
         print("結束。", flush=True)
+        if self._session:
+            self._session.stop()
+            self._session = None
         self._engine.unload()
         icon.stop()
 

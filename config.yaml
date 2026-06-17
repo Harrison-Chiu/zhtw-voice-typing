@@ -38,5 +38,9 @@ processing:
 output:
   method: clipboard      # 可選: clipboard, keyboard (未來擴展)
 
+streaming:
+  silence_trigger_ms: 1000   # 靜音多久觸發切句辨識（ms），建議 800-1200
+  max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（防止 Whisper 幻覺）
+
 hotkey:
   combination: "ctrl+shift+space"   # 全域錄音切換快捷鍵
