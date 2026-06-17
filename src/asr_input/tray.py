@@ -207,7 +207,11 @@ class TrayApp:
             hallucination_threshold_sec=streaming_cfg.get(
                 "hallucination_threshold_sec", 1.5
             ),
+            min_hallucination_audio_sec=streaming_cfg.get(
+                "min_hallucination_audio_sec", 3.0
+            ),
             fallback_silence_ms=streaming_cfg.get("fallback_silence_ms", [500, 300]),
+            fallback_rms_target=streaming_cfg.get("fallback_rms_target", 0.05),
             on_partial=self._on_partial_result,
             on_transcribing=self._on_transcribing,
             verbose=self._verbose,

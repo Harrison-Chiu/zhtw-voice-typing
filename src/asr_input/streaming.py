@@ -38,7 +38,9 @@ class StreamingSession:
         max_segment_sec: float = 30.0,
         min_energy: float = 0.005,
         hallucination_threshold_sec: float = 1.5,
+        min_hallucination_audio_sec: float = 3.0,
         fallback_silence_ms: list[int] | None = None,
+        fallback_rms_target: float = 0.05,
         on_partial: Callable[[str, str], None] | None = None,
         on_transcribing: Callable[[float], None] | None = None,
         verbose: bool = False,
@@ -51,7 +53,9 @@ class StreamingSession:
         self._speech_pad_ms = speech_pad_ms
         self._min_energy = min_energy
         self._hallucination_threshold = hallucination_threshold_sec
+        self._min_hallucination_audio_sec = min_hallucination_audio_sec
         self._fallback_silence_ms = fallback_silence_ms or [500, 300]
+        self._fallback_rms_target = fallback_rms_target
         self._on_partial = on_partial
         self._on_transcribing = on_transcribing
         self._verbose = verbose
@@ -234,6 +238,19 @@ class StreamingSession:
 
         return last_results
 
+    def _try_rms_normalize(
+        self, audio: np.ndarray
+    ) -> tuple[np.ndarray, str, float]:
+        """RMS-normalize audio and re-transcribe. Returns (normalized_audio, text, dt)."""
+        rms = float(np.sqrt(np.mean(audio**2)))
+        if rms == 0 or rms >= self._fallback_rms_target:
+            text, dt = self._transcribe_one(audio)
+            return audio, text, dt
+        gain = self._fallback_rms_target / rms
+        normalized = np.clip(audio * gain, -1.0, 1.0).astype(np.float32)
+        text, dt = self._transcribe_one(normalized)
+        return normalized, text, dt
+
     def _transcribe_loop(self) -> None:
         """Worker thread: pull segments from queue, transcribe, accumulate."""
         while True:
@@ -250,56 +267,80 @@ class StreamingSession:
 
             raw_text, dt = self._transcribe_one(segment_audio)
 
-            if dt > self._hallucination_threshold:
+            if (
+                dt > self._hallucination_threshold
+                and audio_sec >= self._min_hallucination_audio_sec
+            ):
                 if self._verbose:
                     print(
                         f"  [⚠幻覺偵測] {audio_sec:.1f}s→{dt:.1f}s "
-                        f"(>{self._hallucination_threshold}s) → fallback 重切",
+                        f"(>{self._hallucination_threshold}s)",
                         flush=True,
                     )
 
-                fallback_results = self._fallback_transcribe(
-                    segment_audio, segment_probs
+                # Step 1: try RMS normalize on the full segment
+                normalized, raw_norm, dt_norm = self._try_rms_normalize(
+                    segment_audio
                 )
+                if dt_norm <= self._hallucination_threshold:
+                    raw_text = raw_norm
+                    dt = dt_norm
+                    if self._verbose:
+                        print(
+                            f"  [✓RMS normalize] {dt_norm:.2f}s — 幻覺消除",
+                            flush=True,
+                        )
+                else:
+                    if self._verbose:
+                        print(
+                            f"  [RMS normalize] {dt_norm:.2f}s — 仍幻覺 → fallback 重切",
+                            flush=True,
+                        )
 
-                if fallback_results:
-                    sub_stats = []
-                    for sub_raw, sub_sec, sub_dt in fallback_results:
-                        if sub_raw.strip():
-                            processed = self._pipeline.run(sub_raw)
-                            self._segments.append(processed)
-                        else:
-                            processed = ""
-                        sub_stats.append({
-                            "audio_sec": round(sub_sec, 2),
-                            "transcribe_sec": round(sub_dt, 2),
-                            "raw": sub_raw,
-                            "processed": processed,
+                # Step 2: if still hallucinating, try resegment
+                if dt > self._hallucination_threshold:
+                    fallback_results = self._fallback_transcribe(
+                        segment_audio, segment_probs
+                    )
+
+                    if fallback_results:
+                        sub_stats = []
+                        for sub_raw, sub_sec, sub_dt in fallback_results:
+                            if sub_raw.strip():
+                                processed = self._pipeline.run(sub_raw)
+                                self._segments.append(processed)
+                            else:
+                                processed = ""
+                            sub_stats.append({
+                                "audio_sec": round(sub_sec, 2),
+                                "transcribe_sec": round(sub_dt, 2),
+                                "raw": sub_raw,
+                                "processed": processed,
+                            })
+
+                        self._segment_stats.append({
+                            "audio_sec": round(audio_sec, 2),
+                            "transcribe_sec": round(dt, 2),
+                            "rms": round(rms, 5),
+                            "fallback": True,
+                            "original_raw": raw_text,
+                            "original_dt": round(dt, 2),
+                            "sub_segments": sub_stats,
                         })
 
-                    self._segment_stats.append({
-                        "audio_sec": round(audio_sec, 2),
-                        "transcribe_sec": round(dt, 2),
-                        "rms": round(rms, 5),
-                        "fallback": True,
-                        "original_raw": raw_text,
-                        "original_dt": round(dt, 2),
-                        "sub_segments": sub_stats,
-                    })
+                        seg_num = len(self._segments)
+                        combined = "".join(
+                            s["processed"] for s in sub_stats if s["processed"]
+                        )
+                        print(
+                            f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
+                            f"({len(sub_stats)}子段) | {combined}",
+                            flush=True,
+                        )
 
-                    seg_num = len(self._segments)
-                    combined = "".join(
-                        s["processed"] for s in sub_stats if s["processed"]
-                    )
-                    print(
-                        f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
-                        f"({len(sub_stats)}子段) | {combined}",
-                        flush=True,
-                    )
-
-                    if self._on_partial:
-                        self._on_partial(combined, "".join(self._segments))
-                    continue
+                        if self._on_partial:
+                            self._on_partial(combined, "".join(self._segments))
+                        continue
 
             if not raw_text.strip():
                 self._segment_stats.append({

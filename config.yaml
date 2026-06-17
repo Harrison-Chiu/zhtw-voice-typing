@@ -46,7 +46,9 @@ streaming:
   max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（安全網）
   min_energy: 0.005          # RMS 能量門檻，低於此值的段不送辨識（防幻覺/誤觸）
   hallucination_threshold_sec: 1.5  # 轉錄時間超過此值判定為疑似幻覺
+  min_hallucination_audio_sec: 3.0  # 音訊短於此秒數不啟動幻覺偵測（避免短句誤判）
   fallback_silence_ms: [500, 300]   # fallback 重切範圍 [起點, 底線]，每 100ms 遞減尋找最小切分
+  fallback_rms_target: 0.05        # 幻覺 fallback 第一步：RMS 正規化目標值（正常語音 ~0.03-0.1）
   verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
 hotkey:
