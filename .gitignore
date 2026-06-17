@@ -25,6 +25,9 @@ models/
 *.onnx
 *.safetensors
 
+# Logs (personal transcripts)
+data/logs/
+
 # Environment
 .env
 .env.local

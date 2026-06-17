@@ -13,6 +13,7 @@ from asr_input.asr import build_engine
 from asr_input.audio.capture import MicrophoneCapture
 from asr_input.config import load_config
 from asr_input.main import build_pipeline
+from asr_input.output.transcript_log import log_transcript
 
 
 class State(enum.Enum):
@@ -188,9 +189,11 @@ class TrayApp:
             self._set_state(State.IDLE)
             return
 
+        audio_sec = len(audio) / self._sample_rate
         processed_text = self._pipeline.run(raw_text)
         print(f"原始: {raw_text}", flush=True)
         print(f"結果: {processed_text}", flush=True)
+        log_transcript(raw_text, processed_text, audio_duration_sec=audio_sec)
         notify_text = processed_text[:250] + "…" if len(processed_text) > 250 else processed_text
         _silent_notify(self._tray, notify_text, "ASR Input")
         self._set_state(State.IDLE)
