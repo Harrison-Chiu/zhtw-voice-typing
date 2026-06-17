@@ -13,6 +13,7 @@ from asr_input.asr import build_engine
 from asr_input.audio.capture import MicrophoneCapture
 from asr_input.config import load_config
 from asr_input.main import build_pipeline
+from asr_input.output.transcript_log import log_transcript
 
 
 class State(enum.Enum):
@@ -81,6 +82,22 @@ def _make_icon(color: str) -> Image.Image:
     return img
 
 
+NIIF_NOSOUND = 0x10
+
+
+def _silent_notify(icon: pystray.Icon, message: str, title: str = "") -> None:
+    """Windows notification without the default chime."""
+    from pystray._util import win32
+
+    icon._message(
+        win32.NIM_MODIFY,
+        win32.NIF_INFO,
+        szInfo=message,
+        szInfoTitle=title or icon.title or "",
+        dwInfoFlags=NIIF_NOSOUND,
+    )
+
+
 class TrayApp:
     def __init__(self) -> None:
         self._state = State.LOADING
@@ -94,7 +111,7 @@ class TrayApp:
         self._hotkey = _parse_hotkey(hotkey_str)
         self._hotkey_label = hotkey_str.replace("+", "+").upper()
 
-        self._engine = build_engine(asr_cfg)
+        self._engine = build_engine(asr_cfg, vad_cfg=self._config.get("vad"))
         self._source = MicrophoneCapture(sample_rate=self._sample_rate)
         self._pipeline = build_pipeline(self._config)
 
@@ -121,7 +138,7 @@ class TrayApp:
         print("模型載入完成!", flush=True)
         self._set_state(State.IDLE)
         print(f"快捷鍵: {self._hotkey_label}（錄音切換）", flush=True)
-        self._tray.notify(f"就緒 — {self._hotkey_label} 開始錄音", "ASR Input")
+        _silent_notify(self._tray, f"就緒 — {self._hotkey_label} 開始錄音", "ASR Input")
         self._listen_hotkey()
 
     def _listen_hotkey(self) -> None:
@@ -172,10 +189,13 @@ class TrayApp:
             self._set_state(State.IDLE)
             return
 
+        audio_sec = len(audio) / self._sample_rate
         processed_text = self._pipeline.run(raw_text)
         print(f"原始: {raw_text}", flush=True)
         print(f"結果: {processed_text}", flush=True)
-        self._tray.notify(processed_text, "ASR Input")
+        log_transcript(raw_text, processed_text, audio_duration_sec=audio_sec)
+        notify_text = processed_text[:250] + "…" if len(processed_text) > 250 else processed_text
+        _silent_notify(self._tray, notify_text, "ASR Input")
         self._set_state(State.IDLE)
 
     def _set_state(self, state: State) -> None:

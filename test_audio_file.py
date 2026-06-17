@@ -32,7 +32,7 @@ def main() -> None:
     print(f"引擎: {asr_cfg.get('engine', 'qwen')} / {asr_cfg['model_id']}")
     print("載入模型中...")
     t0 = time.time()
-    engine = build_engine(asr_cfg)
+    engine = build_engine(asr_cfg, vad_cfg=config.get("vad"))
     engine.load()
     pipeline = build_pipeline(config)
     print(f"模型載入完成 ({time.time() - t0:.1f}s)\n")

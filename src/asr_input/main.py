@@ -10,8 +10,10 @@ from asr_input.asr import build_engine  # noqa: E402
 from asr_input.audio.capture import AudioSource, MicrophoneCapture  # noqa: E402
 from asr_input.config import load_config  # noqa: E402
 from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
+from asr_input.output.transcript_log import log_transcript  # noqa: E402
 from asr_input.processing.opencc_conv import OpenCCConverter  # noqa: E402
 from asr_input.processing.pipeline import ProcessingPipeline  # noqa: E402
+from asr_input.processing.punct_norm import PunctuationNormalizer  # noqa: E402
 from asr_input.processing.tw_terms import TaiwanTermReplacer  # noqa: E402
 
 print("PyTorch 載入完成。", flush=True)
@@ -24,6 +26,7 @@ def _ensure_utf8_stdout() -> None:
 
 def build_pipeline(config: dict) -> ProcessingPipeline:
     pipeline = ProcessingPipeline()
+    pipeline.add(PunctuationNormalizer())
     pipeline.add(OpenCCConverter(config["processing"]["opencc_config"]))
     pipeline.add(TaiwanTermReplacer())
     if config["output"]["method"] == "clipboard":
@@ -71,7 +74,7 @@ def main(audio_source: AudioSource | None = None) -> None:
     print()
 
     print("載入模型中...")
-    engine = build_engine(asr_cfg)
+    engine = build_engine(asr_cfg, vad_cfg=config.get("vad"))
     engine.load()
     print("模型載入完成!")
     print()
@@ -100,6 +103,7 @@ def main(audio_source: AudioSource | None = None) -> None:
                 continue
 
             raw_text, processed_text = result
+            log_transcript(raw_text, processed_text, audio_duration_sec=duration)
             print(f"    錄音 {duration:.1f} 秒")
             print(f"    原始: {raw_text}")
             print(f"    結果: {processed_text}")
