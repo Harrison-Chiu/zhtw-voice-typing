@@ -19,6 +19,7 @@ class WhisperFWEngine(ASREngine):
         compute_type: str = "float16",
         language: str | None = "zh",
         initial_prompt: str = "繁體中文，台灣用語。",
+        hotwords: str | None = None,
         beam_size: int = 5,
     ) -> None:
         self.model_id = model_id
@@ -26,6 +27,7 @@ class WhisperFWEngine(ASREngine):
         self.compute_type = compute_type
         self.language = language
         self.initial_prompt = initial_prompt
+        self.hotwords = hotwords
         self.beam_size = beam_size
         self._model = None
 
@@ -47,6 +49,7 @@ class WhisperFWEngine(ASREngine):
             language=self.language,
             beam_size=self.beam_size,
             initial_prompt=self.initial_prompt or None,
+            hotwords=self.hotwords or None,
         )
         return "".join(seg.text for seg in segments).strip()
 

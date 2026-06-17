@@ -10,6 +10,7 @@ asr:
   compute_type: float16
   language: "zh"
   initial_prompt: "繁體中文，台灣用語。"
+  hotwords: "詞表 待辦 清單 聲學 標點 主分支"
   beam_size: 5
 
   # --- qwen (備用，context 對簡繁無效，僅靠後處理) ---
