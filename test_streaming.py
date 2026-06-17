@@ -1,8 +1,8 @@
 """Test streaming ASR by simulating real-time audio input from a file.
 
-Loads an audio file, then feeds it to StreamingSession in small chunks
-(simulating microphone input) to verify VAD segmentation + per-sentence
-transcription works correctly.
+Feeds an audio file through the full StreamingSession pipeline (the same
+code path used by TrayApp), using start_from_file() to simulate microphone
+input. This verifies VAD + ASR + post-processing end-to-end.
 
 Usage:
     .venv\\Scripts\\python.exe test_streaming.py [audio_path]
@@ -21,12 +21,11 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 from asr_input.asr import build_engine  # noqa: E402
-from asr_input.audio.streaming_vad import StreamingVAD  # noqa: E402
 from asr_input.config import load_config  # noqa: E402
 from asr_input.main import build_pipeline  # noqa: E402
+from asr_input.streaming import StreamingSession  # noqa: E402
 
 TEST_DIR = Path("data/test_audio")
-CHUNK_SIZE = 1024  # samples per chunk, same as sounddevice default
 
 
 def main() -> None:
@@ -34,7 +33,6 @@ def main() -> None:
     asr_cfg = config["asr"]
     sample_rate = config["audio"]["sample_rate"]
     streaming_cfg = config.get("streaming", {})
-    silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
     vad_cfg = config.get("vad", {})
 
     if len(sys.argv) > 1:
@@ -46,7 +44,8 @@ def main() -> None:
             return
         audio_path = files[0]
 
-    print(f"=== 串流辨識測試: {audio_path.name} ===")
+    silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
+    print(f"=== 串流辨識測試（完整 pipeline）: {audio_path.name} ===")
     print(f"引擎: {asr_cfg.get('engine', 'qwen')} / {asr_cfg['model_id']}")
     print(f"靜音切句門檻: {silence_trigger_ms}ms")
     print()
@@ -68,12 +67,7 @@ def main() -> None:
     vad_model, _ = torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True)
     print("模型載入完成!\n")
 
-    # Collect speech segments via StreamingVAD
-    segments: list[np.ndarray] = []
-
-    def on_segment(seg_audio: np.ndarray) -> None:
-        segments.append(seg_audio)
-
+    # Parse adaptive thresholds from config
     raw_adaptive = streaming_cfg.get("adaptive_thresholds")
     adaptive = (
         [(e["after_sec"], e["silence_ms"]) for e in raw_adaptive]
@@ -81,53 +75,32 @@ def main() -> None:
         else None
     )
 
-    vad = StreamingVAD(
-        on_speech_segment=on_segment,
+    # Run full streaming pipeline (same code path as TrayApp)
+    session = StreamingSession(
+        engine=engine,
+        pipeline=pipeline,
+        vad_model=vad_model,
         sample_rate=sample_rate,
-        threshold=vad_cfg.get("threshold", 0.5),
-        min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
         silence_trigger_ms=silence_trigger_ms,
+        vad_threshold=vad_cfg.get("threshold", 0.5),
+        min_speech_ms=vad_cfg.get("min_speech_duration_ms", 250),
         speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
         max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
         adaptive_thresholds=adaptive,
         min_energy=streaming_cfg.get("min_energy", 0.005),
     )
-    vad.load(vad_model)
 
-    # Simulate real-time: feed audio in chunks
-    print(f"模擬即時輸入（{CHUNK_SIZE} samples/chunk = {CHUNK_SIZE/sample_rate*1000:.0f}ms）...")
+    print("模擬串流輸入中...", flush=True)
     t0 = time.time()
-    for i in range(0, len(audio), CHUNK_SIZE):
-        chunk = audio[i : i + CHUNK_SIZE]
-        vad.feed(chunk)
-    vad.flush()
-    vad_time = time.time() - t0
-    print(f"VAD 完成: {len(segments)} 段語音（{vad_time:.2f}s）\n")
+    session.start_from_file(audio)
+    full_text = session.stop()
+    total_time = time.time() - t0
 
-    # Transcribe each segment
-    results: list[str] = []
-    for i, seg_audio in enumerate(segments):
-        seg_sec = len(seg_audio) / sample_rate
-        t0 = time.time()
-        raw = engine.transcribe(seg_audio, sample_rate)
-        dt = time.time() - t0
-
-        if not raw.strip():
-            print(f"  段 {i+1}: {seg_sec:.1f}s → (空)")
-            continue
-
-        processed = pipeline.run(raw)
-        results.append(processed)
-        print(f"  段 {i+1}: {seg_sec:.1f}s → {dt:.1f}s 辨識")
-        print(f"    原始: {raw}")
-        print(f"    處理: {processed}")
-
-    print("\n=== 完整結果 ===")
-    full_text = "".join(results)
-    print(full_text)
-    print(f"\n共 {len(results)} 段")
+    print(f"\n=== 完整結果（{session.segment_count} 段, {total_time:.1f}s）===")
+    print(full_text or "（沒有辨識到文字）")
 
     engine.unload()
+    print("\nDone!")
 
 
 if __name__ == "__main__":

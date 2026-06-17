@@ -62,13 +62,8 @@ class StreamingSession:
         self._vad.load(vad_model)
 
     def start(self) -> None:
-        """Start recording and processing."""
-        self._segments.clear()
-        self._vad.reset()
-        self._stop_event.clear()
-
-        self._worker = threading.Thread(target=self._transcribe_loop, daemon=True)
-        self._worker.start()
+        """Start recording from microphone and processing."""
+        self._begin()
 
         import sounddevice as sd
 
@@ -81,22 +76,35 @@ class StreamingSession:
         )
         self._stream.start()
 
+    def start_from_file(self, audio: np.ndarray, chunk_size: int = 1024) -> None:
+        """Feed a pre-loaded audio array as if it came from a microphone."""
+        self._begin()
+        for i in range(0, len(audio), chunk_size):
+            self._vad.feed(audio[i : i + chunk_size])
+        self._vad.flush()
+        self._segment_queue.put(None)
+
     def stop(self) -> str:
         """Stop recording, flush remaining audio, return full text."""
         if self._stream is not None:
             self._stream.stop()
             self._stream.close()
             self._stream = None
+            self._vad.flush()
+            self._segment_queue.put(None)
 
-        self._vad.flush()
-
-        # Signal worker to finish
-        self._segment_queue.put(None)
         if self._worker is not None:
-            self._worker.join(timeout=30)
+            self._worker.join(timeout=60)
             self._worker = None
 
         return "".join(self._segments)
+
+    def _begin(self) -> None:
+        self._segments.clear()
+        self._vad.reset()
+        self._stop_event.clear()
+        self._worker = threading.Thread(target=self._transcribe_loop, daemon=True)
+        self._worker.start()
 
     @property
     def partial_text(self) -> str:
