@@ -21,8 +21,10 @@ vad:
   enabled: true
   threshold: 0.5                # VAD 信心門檻（0-1，越高越嚴格）
   min_speech_duration_ms: 250   # 最短語音段（ms）
-  min_silence_duration_ms: 300  # 靜音多久切段（ms）
+  min_silence_duration_ms: 800  # 靜音多久切段（ms）
   speech_pad_ms: 100            # 語音段前後留白（ms）
+  max_segment_sec: 60.0         # 單段上限（秒），超過會用更短靜音門檻再切
+  fallback_silence_ms: [500, 300]  # 長段遞減嘗試的靜音門檻
   min_audio_len_sec: 30.0       # 低於此秒數不切段，直接辨識
 
 audio:

@@ -21,8 +21,10 @@ class VadSegmentedEngine(ASREngine):
         inner: ASREngine,
         threshold: float = 0.5,
         min_speech_duration_ms: int = 250,
-        min_silence_duration_ms: int = 300,
+        min_silence_duration_ms: int = 800,
         speech_pad_ms: int = 100,
+        max_segment_sec: float = 60.0,
+        fallback_silence_ms: tuple[int, ...] = (500, 300),
         min_audio_len_sec: float = 30.0,
     ) -> None:
         self._inner = inner
@@ -32,6 +34,8 @@ class VadSegmentedEngine(ASREngine):
             min_speech_duration_ms=min_speech_duration_ms,
             min_silence_duration_ms=min_silence_duration_ms,
             speech_pad_ms=speech_pad_ms,
+            max_segment_sec=max_segment_sec,
+            fallback_silence_ms=fallback_silence_ms,
         )
 
     def load(self) -> None:

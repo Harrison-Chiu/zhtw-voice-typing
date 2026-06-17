@@ -43,8 +43,10 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
             inner=engine,
             threshold=vad_cfg.get("threshold", 0.5),
             min_speech_duration_ms=vad_cfg.get("min_speech_duration_ms", 250),
-            min_silence_duration_ms=vad_cfg.get("min_silence_duration_ms", 300),
+            min_silence_duration_ms=vad_cfg.get("min_silence_duration_ms", 800),
             speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
+            max_segment_sec=vad_cfg.get("max_segment_sec", 60.0),
+            fallback_silence_ms=tuple(vad_cfg.get("fallback_silence_ms", [500, 300])),
             min_audio_len_sec=vad_cfg.get("min_audio_len_sec", 30.0),
         )
 
