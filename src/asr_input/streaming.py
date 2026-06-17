@@ -37,6 +37,8 @@ class StreamingSession:
         speech_pad_ms: int = 100,
         max_segment_sec: float = 30.0,
         min_energy: float = 0.005,
+        hallucination_threshold_sec: float = 1.5,
+        fallback_silence_ms: list[int] | None = None,
         on_partial: Callable[[str, str], None] | None = None,
         on_transcribing: Callable[[float], None] | None = None,
         verbose: bool = False,
@@ -44,6 +46,12 @@ class StreamingSession:
         self._engine = engine
         self._pipeline = pipeline
         self._sample_rate = sample_rate
+        self._vad_threshold = vad_threshold
+        self._min_speech_ms = min_speech_ms
+        self._speech_pad_ms = speech_pad_ms
+        self._min_energy = min_energy
+        self._hallucination_threshold = hallucination_threshold_sec
+        self._fallback_silence_ms = fallback_silence_ms or [500, 300]
         self._on_partial = on_partial
         self._on_transcribing = on_transcribing
         self._verbose = verbose
@@ -51,7 +59,9 @@ class StreamingSession:
 
         self._segments: list[str] = []
         self._segment_stats: list[dict] = []
-        self._segment_queue: queue.Queue[np.ndarray | None] = queue.Queue()
+        self._segment_queue: queue.Queue[tuple[np.ndarray, list[float]] | None] = (
+            queue.Queue()
+        )
         self._worker: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._stream = None
@@ -138,26 +148,146 @@ class StreamingSession:
     ) -> None:
         self._vad.feed(indata)
 
-    def _on_speech_segment(self, audio: np.ndarray) -> None:
+    def _on_speech_segment(self, audio: np.ndarray, probs: list[float]) -> None:
         """Called by StreamingVAD when a complete speech segment is detected."""
-        self._segment_queue.put(audio)
+        self._segment_queue.put((audio, probs))
+
+    def _transcribe_one(self, audio: np.ndarray) -> tuple[str, float]:
+        """Transcribe a single audio segment. Returns (raw_text, elapsed_sec)."""
+        t0 = time.time()
+        raw_text = self._engine.transcribe(audio, self._sample_rate)
+        dt = time.time() - t0
+        return raw_text, dt
+
+    def _fallback_transcribe(
+        self, audio: np.ndarray, probs: list[float]
+    ) -> list[tuple[str, float, float]]:
+        """Try re-segmenting with shorter silence thresholds to avoid hallucination.
+
+        Tries each threshold on the full segment. If a shorter threshold produces
+        different sub-segments, transcribe them. If all sub-segments are clean,
+        return immediately. If any still hallucinates, try the next shorter threshold.
+        After exhausting all thresholds, return the last attempt's results.
+
+        Returns list of (raw_text, audio_sec, transcribe_sec) for each sub-segment.
+        """
+        last_results: list[tuple[str, float, float]] = []
+
+        for silence_ms in self._fallback_silence_ms:
+            sub_segments = StreamingVAD.resegment(
+                audio,
+                probs,
+                silence_trigger_ms=silence_ms,
+                sample_rate=self._sample_rate,
+                threshold=self._vad_threshold,
+                min_speech_ms=self._min_speech_ms,
+                speech_pad_ms=self._speech_pad_ms,
+                min_energy=self._min_energy,
+            )
+
+            if not sub_segments:
+                continue
+
+            is_different = len(sub_segments) > 1 or (
+                len(sub_segments) == 1 and len(sub_segments[0]) != len(audio)
+            )
+            if not is_different:
+                continue
+
+            if self._verbose:
+                print(
+                    f"  [fallback] {silence_ms}ms → {len(sub_segments)} 子段",
+                    flush=True,
+                )
+
+            results: list[tuple[str, float, float]] = []
+            any_hallucination = False
+
+            for sub_audio in sub_segments:
+                sub_sec = len(sub_audio) / self._sample_rate
+                raw, dt = self._transcribe_one(sub_audio)
+                if self._verbose:
+                    warn = " ⚠仍幻覺" if dt > self._hallucination_threshold else ""
+                    print(
+                        f"    子段 {sub_sec:.1f}s→{dt:.1f}s{warn} | {raw[:50]}",
+                        flush=True,
+                    )
+                results.append((raw, sub_sec, dt))
+                if dt > self._hallucination_threshold:
+                    any_hallucination = True
+
+            last_results = results
+            if not any_hallucination:
+                return results
+
+        return last_results
 
     def _transcribe_loop(self) -> None:
         """Worker thread: pull segments from queue, transcribe, accumulate."""
         while True:
-            segment_audio = self._segment_queue.get()
-            if segment_audio is None:
+            item = self._segment_queue.get()
+            if item is None:
                 break
 
+            segment_audio, segment_probs = item
             audio_sec = len(segment_audio) / self._sample_rate
             rms = float(np.sqrt(np.mean(segment_audio**2)))
 
             if self._on_transcribing:
                 self._on_transcribing(audio_sec)
 
-            t0 = time.time()
-            raw_text = self._engine.transcribe(segment_audio, self._sample_rate)
-            dt = time.time() - t0
+            raw_text, dt = self._transcribe_one(segment_audio)
+
+            if dt > self._hallucination_threshold:
+                if self._verbose:
+                    print(
+                        f"  [⚠幻覺偵測] {audio_sec:.1f}s→{dt:.1f}s "
+                        f"(>{self._hallucination_threshold}s) → fallback 重切",
+                        flush=True,
+                    )
+
+                fallback_results = self._fallback_transcribe(
+                    segment_audio, segment_probs
+                )
+
+                if fallback_results:
+                    sub_stats = []
+                    for sub_raw, sub_sec, sub_dt in fallback_results:
+                        if sub_raw.strip():
+                            processed = self._pipeline.run(sub_raw)
+                            self._segments.append(processed)
+                        else:
+                            processed = ""
+                        sub_stats.append({
+                            "audio_sec": round(sub_sec, 2),
+                            "transcribe_sec": round(sub_dt, 2),
+                            "raw": sub_raw,
+                            "processed": processed,
+                        })
+
+                    self._segment_stats.append({
+                        "audio_sec": round(audio_sec, 2),
+                        "transcribe_sec": round(dt, 2),
+                        "rms": round(rms, 5),
+                        "fallback": True,
+                        "original_raw": raw_text,
+                        "original_dt": round(dt, 2),
+                        "sub_segments": sub_stats,
+                    })
+
+                    seg_num = len(self._segments)
+                    combined = "".join(
+                        s["processed"] for s in sub_stats if s["processed"]
+                    )
+                    print(
+                        f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
+                        f"({len(sub_stats)}子段) | {combined}",
+                        flush=True,
+                    )
+
+                    if self._on_partial:
+                        self._on_partial(combined, "".join(self._segments))
+                    continue
 
             if not raw_text.strip():
                 self._segment_stats.append({
@@ -185,9 +315,8 @@ class StreamingSession:
             })
 
             seg_num = len(self._segments)
-            warn = " ⚠幻覺?" if dt > 1.5 else ""
             print(
-                f"  [#{seg_num}] {audio_sec:.1f}s→{dt:.1f}s{warn} | {processed}",
+                f"  [#{seg_num}] {audio_sec:.1f}s→{dt:.1f}s | {processed}",
                 flush=True,
             )
 

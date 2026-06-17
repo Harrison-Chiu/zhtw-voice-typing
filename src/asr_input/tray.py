@@ -204,6 +204,10 @@ class TrayApp:
             speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
             max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
             min_energy=streaming_cfg.get("min_energy", 0.005),
+            hallucination_threshold_sec=streaming_cfg.get(
+                "hallucination_threshold_sec", 1.5
+            ),
+            fallback_silence_ms=streaming_cfg.get("fallback_silence_ms", [500, 300]),
             on_partial=self._on_partial_result,
             on_transcribing=self._on_transcribing,
             verbose=self._verbose,

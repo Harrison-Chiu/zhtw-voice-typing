@@ -88,6 +88,10 @@ def main() -> None:
         speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
         max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
         min_energy=streaming_cfg.get("min_energy", 0.005),
+        hallucination_threshold_sec=streaming_cfg.get(
+            "hallucination_threshold_sec", 1.5
+        ),
+        fallback_silence_ms=streaming_cfg.get("fallback_silence_ms", [500, 300]),
     )
 
     print("模擬串流輸入中...", flush=True)
@@ -120,7 +124,8 @@ def main() -> None:
         },
         "summary": {
             "total_segments": len(stats),
-            "empty_segments": sum(1 for s in stats if s["empty"]),
+            "empty_segments": sum(1 for s in stats if s.get("empty")),
+            "fallback_segments": sum(1 for s in stats if s.get("fallback")),
             "audio_sec_min": round(min(audio_durations), 2) if audio_durations else 0,
             "audio_sec_max": round(max(audio_durations), 2) if audio_durations else 0,
             "audio_sec_avg": round(np.mean(audio_durations), 2) if audio_durations else 0,

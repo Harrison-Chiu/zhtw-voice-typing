@@ -4,6 +4,8 @@ Processes audio chunk-by-chunk and fires a callback when a complete speech
 segment is detected (i.e., speech followed by sufficient silence).
 """
 
+from __future__ import annotations
+
 import sys
 from collections.abc import Callable
 
@@ -27,7 +29,7 @@ class StreamingVAD:
 
     def __init__(
         self,
-        on_speech_segment: Callable[[np.ndarray], None],
+        on_speech_segment: Callable[[np.ndarray, list[float]], None],
         sample_rate: int = 16000,
         threshold: float = 0.5,
         min_speech_ms: int = 250,
@@ -59,12 +61,15 @@ class StreamingVAD:
         # Buffering state
         self._pending: np.ndarray = np.array([], dtype=np.float32)
         self._speech_buf: list[np.ndarray] = []
+        self._speech_probs: list[float] = []
         self._in_speech = False
         self._silence_samples = 0
         self._speech_samples = 0
         # Pre-speech ring buffer for padding
         self._pre_buf: list[np.ndarray] = []
         self._pre_buf_samples = 0
+        self._pre_probs: list[float] = []
+        self._segment_count = 0
 
     def load(self, model: torch.jit.ScriptModule) -> None:
         self._model = model
@@ -73,11 +78,13 @@ class StreamingVAD:
         """Reset state for a new streaming session."""
         self._pending = np.array([], dtype=np.float32)
         self._speech_buf.clear()
+        self._speech_probs.clear()
         self._in_speech = False
         self._silence_samples = 0
         self._speech_samples = 0
         self._pre_buf.clear()
         self._pre_buf_samples = 0
+        self._pre_probs.clear()
         self._total_fed_samples = 0
         self._segment_count = 0
         if self._model is not None:
@@ -101,6 +108,54 @@ class StreamingVAD:
         """Flush any remaining speech at end of session."""
         if self._in_speech and self._speech_buf:
             self._emit_segment()
+
+    @staticmethod
+    def resegment(
+        audio: np.ndarray,
+        probs: list[float],
+        silence_trigger_ms: int,
+        sample_rate: int = 16000,
+        threshold: float = 0.5,
+        min_speech_ms: int = 250,
+        speech_pad_ms: int = 100,
+        min_energy: float = 0.005,
+    ) -> list[np.ndarray]:
+        """Re-segment audio using pre-computed VAD probabilities.
+
+        Replays the same state-machine logic with a different silence threshold.
+        No model needed — works purely from the stored prob sequence.
+        """
+        collected: list[np.ndarray] = []
+
+        def _collect(seg: np.ndarray, _probs: list[float]) -> None:
+            collected.append(seg)
+
+        chunk_size = StreamingVAD.SILERO_CHUNK_SAMPLES
+        vad = StreamingVAD(
+            on_speech_segment=_collect,
+            sample_rate=sample_rate,
+            threshold=threshold,
+            min_speech_ms=min_speech_ms,
+            silence_trigger_ms=silence_trigger_ms,
+            silence_min_ms=silence_trigger_ms,
+            speech_pad_ms=speech_pad_ms,
+            max_segment_sec=len(audio) / sample_rate + 1,
+            min_energy=min_energy,
+        )
+
+        n_chunks = len(probs)
+        for i in range(n_chunks):
+            start = i * chunk_size
+            end = min(start + chunk_size, len(audio))
+            if start >= len(audio):
+                break
+            window = audio[start:end]
+            if len(window) < chunk_size:
+                window = np.pad(window, (0, chunk_size - len(window)))
+            vad._apply_vad_decision(probs[i], window)
+        vad.flush()
+
+        return collected
 
     def _current_silence_trigger(self) -> int:
         """Return the effective silence trigger based on how long speech has accumulated.
@@ -133,6 +188,9 @@ class StreamingVAD:
     def _process_window(self, window: np.ndarray) -> None:
         tensor = torch.from_numpy(window)
         prob = self._model(tensor, self._sample_rate).item()
+        self._apply_vad_decision(prob, window)
+
+    def _apply_vad_decision(self, prob: float, window: np.ndarray) -> None:
         is_speech = prob >= self._threshold
 
         if is_speech:
@@ -142,9 +200,12 @@ class StreamingVAD:
                 self._speech_samples = 0
                 if self._pre_buf:
                     self._speech_buf.extend(self._pre_buf)
+                    self._speech_probs.extend(self._pre_probs)
                     self._pre_buf.clear()
                     self._pre_buf_samples = 0
+                    self._pre_probs.clear()
             self._speech_buf.append(window)
+            self._speech_probs.append(prob)
             self._speech_samples += len(window)
             self._silence_samples = 0
 
@@ -160,6 +221,7 @@ class StreamingVAD:
         else:
             if self._in_speech:
                 self._speech_buf.append(window)
+                self._speech_probs.append(prob)
                 self._silence_samples += len(window)
                 trigger = self._current_silence_trigger()
 
@@ -176,9 +238,11 @@ class StreamingVAD:
             else:
                 self._pre_buf.append(window)
                 self._pre_buf_samples += len(window)
+                self._pre_probs.append(prob)
                 while self._pre_buf_samples > self._speech_pad_samples and len(self._pre_buf) > 1:
                     removed = self._pre_buf.pop(0)
                     self._pre_buf_samples -= len(removed)
+                    self._pre_probs.pop(0)
 
     def _emit_segment(self, reason: str = "") -> None:
         if not self._speech_buf:
@@ -186,15 +250,19 @@ class StreamingVAD:
             return
 
         audio = np.concatenate(self._speech_buf)
+        probs = list(self._speech_probs)
 
         if self._silence_samples > self._speech_pad_samples:
             trim = self._silence_samples - self._speech_pad_samples
             audio = audio[: len(audio) - trim]
+            trim_chunks = trim // self.SILERO_CHUNK_SAMPLES
+            if trim_chunks > 0:
+                probs = probs[: len(probs) - trim_chunks]
 
         if len(audio) >= self._min_speech_samples:
             rms = np.sqrt(np.mean(audio**2))
             if rms >= self._min_energy:
-                self._segment_count = getattr(self, "_segment_count", 0) + 1
+                self._segment_count += 1
                 if self._verbose:
                     seg_sec = len(audio) / self._sample_rate
                     self._clear_status()
@@ -203,7 +271,7 @@ class StreamingVAD:
                         f"{seg_sec:.1f}s ({reason}) → 辨識中...",
                         flush=True,
                     )
-                self._on_speech_segment(audio)
+                self._on_speech_segment(audio, probs)
             elif self._verbose:
                 self._clear_status()
                 print(
@@ -212,8 +280,10 @@ class StreamingVAD:
                 )
 
         self._speech_buf.clear()
+        self._speech_probs.clear()
         self._in_speech = False
         self._silence_samples = 0
         self._speech_samples = 0
         self._pre_buf.clear()
         self._pre_buf_samples = 0
+        self._pre_probs.clear()
