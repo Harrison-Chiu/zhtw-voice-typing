@@ -38,6 +38,7 @@ uv run ruff format src/              # 格式化
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
 - `src/asr_input/asr/whisper_fw.py` — faster-whisper 實作（**目前預設引擎**）
 - `src/asr_input/processing/pipeline.py` — `TextProcessor` 抽象介面 + `ProcessingPipeline` 串接器
+- `src/asr_input/processing/punct_norm.py` — 上下文感知標點正規化（CJK 旁半形→全形）
 - `src/asr_input/processing/opencc_conv.py` — OpenCC s2twp 簡轉繁
 - `src/asr_input/processing/tw_terms.py` — 自訂台灣用語替換（讀 `data/tw_dict.yaml`）
 - `src/asr_input/audio/capture.py` — `AudioSource` 抽象介面 + `MicrophoneCapture` 實作
@@ -56,6 +57,7 @@ uv run ruff format src/              # 格式化
 
 - **ASR 引擎**：**預設改用 faster-whisper large-v3-turbo**（~2GB VRAM、辨識 ~0.5s）。Qwen3-ASR 1.7B 保留為備用引擎。可在 `config.yaml` 的 `asr.engine` 切換（`whisper` / `qwen`）
 - **Whisper initial_prompt 能引導繁體+標點（已證實）**：短繁體句+全形標點（`繁體中文，台灣用語。`）→ 輸出原生 0% 簡體 + 帶標點。prompt 字體決定輸出字體、prompt 標點決定輸出標點，兩者獨立。詳見 `experiment_whisper_prompt.py`。這跟 Qwen 的 context 完全相反
+- **標點全形化靠後處理，不靠 prompt（已證實，勿重試）**：三輪實驗（v1-v3）測試了 15+ 種 prompt、hotwords、suppress_tokens。結論：長 prompt 可提高全形率但引入亂碼/幻覺；hotwords 對多 token 標點無效；suppress 半形逗號會被句號取代。最穩方案是短 prompt + `PunctuationNormalizer` 後處理（看前後字元判斷中英文語境）。實驗結果見 `data/experiment_punct_v2.json`、`data/experiment_punct_v3.json`、`data/experiment_viewer.html`
 - **繁中轉換策略**：簡轉繁**只能靠** OpenCC s2twp + 自訂詞表後處理。context 引導已實驗證明**零效果**（見下）
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
 - **context 不能引導簡繁（已證實，勿重試）**：`experiment_context.py` 跑過 11 組探針（指令/關鍵詞/繁體前文/簡體前文/英文/否定/熱詞），輸出 byte 完全相同，簡體比例全 23.7%。context 進到了 prompt 的 system 訊息、模型也收到，但對「輸出簡體還是繁體」無作用；它的用途是罕見專有名詞的熱詞偏置。`language` 參數也只支援 `Chinese`，無繁體選項
@@ -83,15 +85,17 @@ v0.2 — System Tray 版可用。已驗證：
 - 模型載入 ✓、音檔辨識 ✓、麥克風辨識 ✓、簡轉繁 ✓、台灣用語替換 ✓
 - 多引擎切換 ✓（faster-whisper / Qwen），whisper 已設為預設、繁體+標點原生輸出 ✓
 - **全域快捷鍵 + System Tray** ✓ — `pynput` 熱鍵 + `pystray` 常駐 tray，Toggle 模式
+- **VAD 切段** ✓ — Silero VAD 自適應切段（800ms→500ms→300ms 遞減），裝飾器模式包裝引擎
+- **標點正規化** ✓ — 上下文感知半形→全形轉換，Pipeline 第一步（標點→OpenCC→詞表→輸出）
+- **轉錄 log** ✓ — JSONL 格式，每筆含時間戳/原始/處理後文字
 
 ## 後續方向
 
-- **VAD 切段** — 用 Silero VAD 將長音訊切成短段逐段辨識，改善長音訊速度
-- ~~**全域快捷鍵 + System Tray**~~ ✓ 已完成
+- **詞表擴充** — 領域專用詞、OpenCC 過度轉換修正
 - **即時串流辨識** — 邊講邊出字
+- **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿
 - **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
 - **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
-- **詞表擴充** — 領域專用詞、OpenCC 過度轉換修正
 
 ## 注意事項
 
