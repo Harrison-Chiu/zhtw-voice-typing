@@ -30,6 +30,7 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
             compute_type=asr_cfg.get("compute_type", "float16"),
             language=asr_cfg.get("language", "zh"),
             initial_prompt=asr_cfg.get("initial_prompt", "繁體中文，台灣用語。"),
+            hotwords=asr_cfg.get("hotwords"),
             beam_size=asr_cfg.get("beam_size", 5),
         )
 
