@@ -81,6 +81,22 @@ def _make_icon(color: str) -> Image.Image:
     return img
 
 
+NIIF_NOSOUND = 0x10
+
+
+def _silent_notify(icon: pystray.Icon, message: str, title: str = "") -> None:
+    """Windows notification without the default chime."""
+    from pystray._util import win32
+
+    icon._message(
+        win32.NIM_MODIFY,
+        win32.NIF_INFO,
+        szInfo=message,
+        szInfoTitle=title or icon.title or "",
+        dwInfoFlags=NIIF_NOSOUND,
+    )
+
+
 class TrayApp:
     def __init__(self) -> None:
         self._state = State.LOADING
@@ -121,7 +137,7 @@ class TrayApp:
         print("模型載入完成!", flush=True)
         self._set_state(State.IDLE)
         print(f"快捷鍵: {self._hotkey_label}（錄音切換）", flush=True)
-        self._tray.notify(f"就緒 — {self._hotkey_label} 開始錄音", "ASR Input")
+        _silent_notify(self._tray, f"就緒 — {self._hotkey_label} 開始錄音", "ASR Input")
         self._listen_hotkey()
 
     def _listen_hotkey(self) -> None:
@@ -176,7 +192,7 @@ class TrayApp:
         print(f"原始: {raw_text}", flush=True)
         print(f"結果: {processed_text}", flush=True)
         notify_text = processed_text[:250] + "…" if len(processed_text) > 250 else processed_text
-        self._tray.notify(notify_text, "ASR Input")
+        _silent_notify(self._tray, notify_text, "ASR Input")
         self._set_state(State.IDLE)
 
     def _set_state(self, state: State) -> None:
