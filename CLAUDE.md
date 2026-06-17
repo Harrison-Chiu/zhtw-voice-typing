@@ -39,7 +39,7 @@ uv run ruff format src/              # 格式化
 - `src/asr_input/asr/whisper_fw.py` — faster-whisper 實作（**目前預設引擎**）
 - `src/asr_input/processing/pipeline.py` — `TextProcessor` 抽象介面 + `ProcessingPipeline` 串接器
 - `src/asr_input/processing/punct_norm.py` — 上下文感知標點正規化（CJK 旁半形→全形）
-- `src/asr_input/processing/opencc_conv.py` — OpenCC s2twp 簡轉繁
+- `src/asr_input/processing/opencc_conv.py` — 智慧 OpenCC：偵測到簡體字才跑 s2twp 轉換，純繁體跳過
 - `src/asr_input/processing/tw_terms.py` — 自訂台灣用語替換（讀 `data/tw_dict.yaml`）
 - `src/asr_input/audio/capture.py` — `AudioSource` 抽象介面 + `MicrophoneCapture` 實作
 - `src/asr_input/output/clipboard.py` — 剪貼簿輸出
@@ -88,10 +88,10 @@ v0.2 — System Tray 版可用。已驗證：
 - **VAD 切段** ✓ — Silero VAD 自適應切段（800ms→500ms→300ms 遞減），裝飾器模式包裝引擎
 - **標點正規化** ✓ — 上下文感知半形→全形轉換，Pipeline 第一步（標點→OpenCC→詞表→輸出）
 - **轉錄 log** ✓ — JSONL 格式，每筆含時間戳/原始/處理後文字
+- **智慧 OpenCC** ✓ — 偵測簡體字才跑轉換，純繁體跳過（避免項目→專案、台→臺等過度轉換）
+- **詞表清理** ✓ — 刪除 no-op、加 OpenCC 反向修正（平臺→平台）、分類整理
 
 ## 後續方向
-
-- **詞表擴充** — 領域專用詞、OpenCC 過度轉換修正
 - **即時串流辨識** — 邊講邊出字
 - **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿
 - **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
