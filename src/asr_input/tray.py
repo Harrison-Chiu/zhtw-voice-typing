@@ -175,7 +175,8 @@ class TrayApp:
         processed_text = self._pipeline.run(raw_text)
         print(f"原始: {raw_text}", flush=True)
         print(f"結果: {processed_text}", flush=True)
-        self._tray.notify(processed_text, "ASR Input")
+        notify_text = processed_text[:250] + "…" if len(processed_text) > 250 else processed_text
+        self._tray.notify(notify_text, "ASR Input")
         self._set_state(State.IDLE)
 
     def _set_state(self, state: State) -> None:
