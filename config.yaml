@@ -10,7 +10,7 @@ asr:
   compute_type: float16
   language: "zh"
   initial_prompt: "繁體中文，台灣用語。"
-  hotwords: "詞表 待辦 清單 聲學 標點 主分支"
+  hotwords: "詞表 待辦 清單 聲學 標點 主分支 逗號 的嗎？ 嗯嗯 欸"
   beam_size: 5
 
   # --- qwen (備用，context 對簡繁無效，僅靠後處理) ---
@@ -48,7 +48,7 @@ streaming:
   hallucination_threshold_sec: 1.5  # 轉錄時間超過此值判定為疑似幻覺
   min_hallucination_audio_sec: 3.0  # 音訊短於此秒數不啟動幻覺偵測（避免短句誤判）
   fallback_silence_ms: [500, 300]   # fallback 重切範圍 [起點, 底線]，每 100ms 遞減尋找最小切分
-  fallback_rms_target: 0.05        # 幻覺 fallback 第一步：RMS 正規化目標值（正常語音 ~0.03-0.1）
+  fallback_rms_target: 0.05         # 幻覺 fallback 第一步：RMS 正規化目標值（正常語音 ~0.03-0.1）
   verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
 hotkey:
