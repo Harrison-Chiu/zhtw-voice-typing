@@ -212,9 +212,7 @@ class StreamingVAD:
             if self._verbose and self._speech_samples % (self._sample_rate // 2) < len(window):
                 speech_sec = self._speech_samples / self._sample_rate
                 trigger_ms = self._current_silence_trigger() * 1000 // self._sample_rate
-                self._status_line(
-                    f"[語音] {speech_sec:.1f}s | 門檻 {trigger_ms}ms"
-                )
+                self._status_line(f"[語音] {speech_sec:.1f}s | 門檻 {trigger_ms}ms")
 
             if self._speech_samples >= self._max_segment_samples:
                 self._emit_segment("上限")
@@ -267,8 +265,7 @@ class StreamingVAD:
                     seg_sec = len(audio) / self._sample_rate
                     self._clear_status()
                     print(
-                        f"  [切句] #{self._segment_count} "
-                        f"{seg_sec:.1f}s ({reason}) → 辨識中...",
+                        f"  [切句] #{self._segment_count} {seg_sec:.1f}s ({reason}) → 辨識中...",
                         flush=True,
                     )
                 self._on_speech_segment(audio, probs)

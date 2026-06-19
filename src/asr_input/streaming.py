@@ -63,9 +63,7 @@ class StreamingSession:
 
         self._segments: list[str] = []
         self._segment_stats: list[dict] = []
-        self._segment_queue: queue.Queue[tuple[np.ndarray, list[float]] | None] = (
-            queue.Queue()
-        )
+        self._segment_queue: queue.Queue[tuple[np.ndarray, list[float]] | None] = queue.Queue()
         self._worker: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._stream = None
@@ -147,9 +145,7 @@ class StreamingSession:
     def segment_count(self) -> int:
         return len(self._segments)
 
-    def _audio_callback(
-        self, indata: np.ndarray, frames: int, time_info, status
-    ) -> None:
+    def _audio_callback(self, indata: np.ndarray, frames: int, time_info, status) -> None:
         self._vad.feed(indata)
 
     def _on_speech_segment(self, audio: np.ndarray, probs: list[float]) -> None:
@@ -238,9 +234,7 @@ class StreamingSession:
 
         return last_results
 
-    def _try_rms_normalize(
-        self, audio: np.ndarray
-    ) -> tuple[np.ndarray, str, float]:
+    def _try_rms_normalize(self, audio: np.ndarray) -> tuple[np.ndarray, str, float]:
         """RMS-normalize audio and re-transcribe. Returns (normalized_audio, text, dt)."""
         rms = float(np.sqrt(np.mean(audio**2)))
         if rms == 0 or rms >= self._fallback_rms_target:
@@ -279,9 +273,7 @@ class StreamingSession:
                     )
 
                 # Step 1: try RMS normalize on the full segment
-                normalized, raw_norm, dt_norm = self._try_rms_normalize(
-                    segment_audio
-                )
+                normalized, raw_norm, dt_norm = self._try_rms_normalize(segment_audio)
                 if dt_norm <= self._hallucination_threshold:
                     raw_text = raw_norm
                     dt = dt_norm
@@ -299,9 +291,7 @@ class StreamingSession:
 
                 # Step 2: if still hallucinating, try resegment
                 if dt > self._hallucination_threshold:
-                    fallback_results = self._fallback_transcribe(
-                        segment_audio, segment_probs
-                    )
+                    fallback_results = self._fallback_transcribe(segment_audio, segment_probs)
 
                     if fallback_results:
                         sub_stats = []
@@ -311,27 +301,29 @@ class StreamingSession:
                                 self._segments.append(processed)
                             else:
                                 processed = ""
-                            sub_stats.append({
-                                "audio_sec": round(sub_sec, 2),
-                                "transcribe_sec": round(sub_dt, 2),
-                                "raw": sub_raw,
-                                "processed": processed,
-                            })
+                            sub_stats.append(
+                                {
+                                    "audio_sec": round(sub_sec, 2),
+                                    "transcribe_sec": round(sub_dt, 2),
+                                    "raw": sub_raw,
+                                    "processed": processed,
+                                }
+                            )
 
-                        self._segment_stats.append({
-                            "audio_sec": round(audio_sec, 2),
-                            "transcribe_sec": round(dt, 2),
-                            "rms": round(rms, 5),
-                            "fallback": True,
-                            "original_raw": raw_text,
-                            "original_dt": round(dt, 2),
-                            "sub_segments": sub_stats,
-                        })
+                        self._segment_stats.append(
+                            {
+                                "audio_sec": round(audio_sec, 2),
+                                "transcribe_sec": round(dt, 2),
+                                "rms": round(rms, 5),
+                                "fallback": True,
+                                "original_raw": raw_text,
+                                "original_dt": round(dt, 2),
+                                "sub_segments": sub_stats,
+                            }
+                        )
 
                         seg_num = len(self._segments)
-                        combined = "".join(
-                            s["processed"] for s in sub_stats if s["processed"]
-                        )
+                        combined = "".join(s["processed"] for s in sub_stats if s["processed"])
                         print(
                             f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
                             f"({len(sub_stats)}子段) | {combined}",
@@ -343,29 +335,33 @@ class StreamingSession:
                         continue
 
             if not raw_text.strip():
-                self._segment_stats.append({
-                    "audio_sec": round(audio_sec, 2),
-                    "transcribe_sec": round(dt, 2),
-                    "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
-                    "rms": round(rms, 5),
-                    "raw": "",
-                    "processed": "",
-                    "empty": True,
-                })
+                self._segment_stats.append(
+                    {
+                        "audio_sec": round(audio_sec, 2),
+                        "transcribe_sec": round(dt, 2),
+                        "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
+                        "rms": round(rms, 5),
+                        "raw": "",
+                        "processed": "",
+                        "empty": True,
+                    }
+                )
                 continue
 
             processed = self._pipeline.run(raw_text)
             self._segments.append(processed)
 
-            self._segment_stats.append({
-                "audio_sec": round(audio_sec, 2),
-                "transcribe_sec": round(dt, 2),
-                "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
-                "rms": round(rms, 5),
-                "raw": raw_text,
-                "processed": processed,
-                "empty": False,
-            })
+            self._segment_stats.append(
+                {
+                    "audio_sec": round(audio_sec, 2),
+                    "transcribe_sec": round(dt, 2),
+                    "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
+                    "rms": round(rms, 5),
+                    "raw": raw_text,
+                    "processed": processed,
+                    "empty": False,
+                }
+            )
 
             seg_num = len(self._segments)
             print(

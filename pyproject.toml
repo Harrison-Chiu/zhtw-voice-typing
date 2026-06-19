@@ -39,7 +39,12 @@ quote-style = "double"
 [dependency-groups]
 dev = [
     "ruff>=0.15.17",
+    "pytest>=8.3.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
 
 [[tool.uv.index]]
 name = "pytorch-cu124"

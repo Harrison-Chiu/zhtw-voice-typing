@@ -204,12 +204,8 @@ class TrayApp:
             speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
             max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
             min_energy=streaming_cfg.get("min_energy", 0.005),
-            hallucination_threshold_sec=streaming_cfg.get(
-                "hallucination_threshold_sec", 1.5
-            ),
-            min_hallucination_audio_sec=streaming_cfg.get(
-                "min_hallucination_audio_sec", 3.0
-            ),
+            hallucination_threshold_sec=streaming_cfg.get("hallucination_threshold_sec", 1.5),
+            min_hallucination_audio_sec=streaming_cfg.get("min_hallucination_audio_sec", 3.0),
             fallback_silence_ms=streaming_cfg.get("fallback_silence_ms", [500, 300]),
             fallback_rms_target=streaming_cfg.get("fallback_rms_target", 0.05),
             on_partial=self._on_partial_result,
@@ -253,9 +249,7 @@ class TrayApp:
             seg_count = self._session.segment_count if self._session else 0
             char_count = len(accumulated)
             self._tray.icon = _make_icon(COLORS[State.STREAMING])
-            self._tray.title = (
-                f"ASR — {seg_count}段 {char_count}字 | {latest_segment[:50]}"
-            )
+            self._tray.title = f"ASR — {seg_count}段 {char_count}字 | {latest_segment[:50]}"
 
     def _set_state(self, state: State) -> None:
         self._state = state

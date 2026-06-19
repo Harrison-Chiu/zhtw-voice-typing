@@ -14,10 +14,33 @@ uv run python -m asr_input.tray      # 啟動 System Tray 版（全域快捷鍵�
 uv run python scripts/test_audio_file.py  # 用音檔測試（不需要麥克風）
 uv run ruff check src/               # lint 檢查
 uv run ruff format src/              # 格式化
+uv run pytest                        # 跑單元測試（processing/，毫秒級不碰硬體）
 ```
 
 注意：首次 `import torch` 需要 30-60 秒載入 CUDA，這是正常的。
 模型首次載入會從 HuggingFace 下載約 3.4GB，之後有快取。
+
+## 階段收尾流程
+
+每個階段做完，依序執行（B 組視這次做了什麼挑需要的，不必每次硬湊）：
+
+**A. 程式碼乾淨**（動到程式碼才需要）
+1. `ruff format src/` — 自動排版
+2. `ruff check src/` — 檢查，有報錯就修
+3. `pytest` — 跑測試（每次都跑，僅 ~0.3s；目前只覆蓋 `processing/`）
+
+**B. 記錄更新**（repo 內檔案，會進同一個 commit）
+4. `TODO.md` — 完成項打勾、補新待辦
+5. `CLAUDE.md`：
+   - 「已確立的設計決策」— 有實驗結論／決定不重做的做法
+   - 「目前狀態」— 功能落地、版本推進
+
+**C. 封板**
+6. `git status` 確認沒夾帶 `.m4a` / `.wav` / 模型權重
+7. `git commit`（中文訊息，講清楚改了什麼）
+
+**D. 記憶**（在 repo 外 `~/.claude/...`，獨立於 commit）
+8. 學到非顯而易見的事才更新 memory（設計取捨、踩坑、慣例），純程式結構不記
 
 ## 架構
 
@@ -105,9 +128,10 @@ v0.3 — 串流辨識可用。已驗證：
 - **智慧 OpenCC** ✓ — 偵測簡體字才跑轉換，純繁體跳過（避免項目→專案、台→臺等過度轉換）
 - **詞表清理** ✓ — 刪除 no-op、加 OpenCC 反向修正（平臺→平台）、分類整理
 - **Hotwords** ✓ — config.yaml 可設定，已配置常見辨識錯誤詞（詞表、待辦、清單等）
+- **單元測試** ✓ — pytest 導入，`tests/` 38 個 case 覆蓋 `processing/` 三模組；階段收尾流程已明文化（見上方）
 
 ## 後續方向
-- **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿
+- **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿（移出 MVP，技術複雜度高）
 - **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
 - **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
 
@@ -115,5 +139,5 @@ v0.3 — 串流辨識可用。已驗證：
 
 - 開發環境在 Windows 11，RTX 4060，Claude Code 跑在虛擬機中
 - `uv run` 在虛擬機中可能有路徑問題，可直接用 `.venv\Scripts\python.exe` 替代
-- `data/test_audio/` 裡有測試音檔（.m4a），不要 commit 到 git（已在 .gitignore 排除 *.m4a 的上層目錄）
+- `data/test_audio/` 裡有測試音檔（.m4a / .wav），不要 commit 到 git（.gitignore 已整個資料夾排除 `data/test_audio/`）
 - 模型權重不進 git（.gitignore 已排除 *.safetensors 等）
