@@ -1,15 +1,16 @@
 # 🎤 ASR Input
 
-本地語音輸入系統 — 台灣繁體中文
+本地語音輸入系統 — 台灣繁體中文。
 
-在 NVIDIA GPU 上運行 Qwen3-ASR 語音辨識模型，自動將辨識結果轉換為台灣繁體中文用語。
+在本機 GPU 上做語音辨識，自動把結果轉成台灣繁體中文用語，複製到剪貼簿隨處貼上。
+全程離線、不上傳雲端。
 
 ## 功能
 
-- **語音辨識** — Qwen3-ASR 1.7B，支援中文（含方言）
+- **語音辨識** — 本地 ASR 引擎，可在 `config.yaml` 切換（預設 faster-whisper）
 - **台灣繁中轉換** — OpenCC 簡轉繁 + 自訂台灣用語詞表
-- **剪貼簿輸出** — 辨識結果自動複製到剪貼簿，隨處貼上
-- **模組化設計** — ASR 引擎、後處理、輸出方式皆可抽換
+- **全域快捷鍵** — System Tray 常駐，一鍵開始/停止錄音
+- **剪貼簿輸出** — 辨識結果自動複製，隨處貼上
 
 ## 系統需求
 
@@ -21,90 +22,28 @@
 ## 安裝
 
 ```bash
-# 1. Clone 專案
 git clone <repo-url>
 cd asr-input
-
-# 2. 安裝依賴（uv 會自動建立虛擬環境）
-uv sync
-
-# 3. 首次執行會自動從 HuggingFace 下載模型（~3.4GB）
+uv sync          # 自動建立虛擬環境並安裝依賴
 ```
 
-## 使用方式
+首次執行會自動從 HuggingFace 下載模型（數 GB），之後有快取。
+
+## 使用
 
 ```bash
-uv run python -m asr_input.main
+uv run python -m asr_input.tray   # System Tray 版（全域快捷鍵，日常推薦）
+uv run python -m asr_input.main   # CLI 版（終端機互動）
 ```
 
-啟動後：
+設定（引擎、裝置、語言、後處理、串流參數）都在 `config.yaml`，
+自訂台灣用語詞表在 `data/tw_dict.yaml`。
 
-1. 等待模型載入（首次約 30-60 秒）
-2. 按 **Enter** → 開始錄音 🎤
-3. 講完話 → 按 **Enter** 停止
-4. 辨識結果自動轉為台灣繁中，複製到剪貼簿 📋
-5. 輸入 `q` + Enter 退出
+## 更多文件
 
-### 用音檔測試（不需要麥克風）
-
-```bash
-# 把 .m4a/.wav 檔放進 data/test_audio/
-uv run python scripts/test_audio_file.py
-```
-
-## 架構
-
-```
-麥克風 → AudioCapture → ASREngine → TextProcessing → Output
-```
-
-| 模組 | 檔案 | 說明 |
-|------|------|------|
-| Audio Capture | `audio/capture.py` | 麥克風收音（16kHz） |
-| ASR Engine | `asr/qwen.py` | Qwen3-ASR 1.7B 推理 |
-| Text Processing | `processing/` | OpenCC s2twp + 台灣用語替換 |
-| Output | `output/clipboard.py` | 剪貼簿輸出 |
-
-每個模組有抽象介面，可獨立替換。詳細架構說明見 `docs/index.html`。
-
-## 設定
-
-編輯 `config.yaml`：
-
-```yaml
-asr:
-  engine: qwen
-  model_id: "Qwen/Qwen3-ASR-1.7B"
-  device: cuda
-  language: "Chinese"
-  context: "以下是台灣繁體中文的語音轉錄。"
-
-processing:
-  opencc_config: s2twp
-  tw_dict_path: data/tw_dict.yaml
-```
-
-### 自訂台灣用語詞表
-
-編輯 `data/tw_dict.yaml` 新增替換規則：
-
-```yaml
-"中國用語": "台灣用語"
-"人工智能": "人工智慧"
-"代碼": "程式碼"
-```
-
-## 開發
-
-```bash
-uv run ruff check src/    # 程式碼檢查
-uv run ruff format src/   # 自動格式化
-```
+- **架構與設計決策** — [`CLAUDE.md`](CLAUDE.md)（含模組職責、擴展方式、已確立決策）
+- **待辦與藍圖** — [`TODO.md`](TODO.md)
 
 ## 技術棧
 
-- **ASR**: [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) 1.7B
-- **繁中轉換**: [OpenCC](https://github.com/BYVoid/OpenCC) s2twp
-- **環境管理**: [uv](https://docs.astral.sh/uv/)
-- **程式碼品質**: [ruff](https://docs.astral.sh/ruff/)
-- **GPU**: PyTorch CUDA 12.4
+faster-whisper · OpenCC s2twp · PyTorch CUDA · uv · ruff

@@ -36,6 +36,7 @@
 - [x] 單元測試 — pytest 導入，覆蓋 processing/ 三模組（punct_norm / opencc_conv / tw_terms），38 個 case
   - 已加階段收尾流程到 CLAUDE.md（ruff format/check → pytest → 記錄更新 → commit → memory）
   - 待補：幻覺 RMS 邏輯（streaming.py）需先抽成純函數才好測
+- [ ] docs/index.html 翻新 — 目前凍結在 v0.1（引擎寫 Qwen、結構樹缺串流/tray、roadmap 把已完成的當未來）。等正式規劃「後續改善」時連同 roadmap 一次重寫
 - [ ] Web UI 測試介面 — 瀏覽器介面，用於測試/展示/設定調整
 - [ ] 多引擎擴充 — SenseVoice 等其他引擎
 - [ ] 自動安裝/打包 — exe 或 installer

@@ -2,7 +2,7 @@
 
 ## 專案概述
 
-本地語音輸入系統，在 RTX 4060（8GB VRAM）上用 Qwen3-ASR 1.7B 辨識語音，
+本地語音輸入系統，在 RTX 4060（8GB VRAM）上以本地 ASR 引擎（預設 faster-whisper，可切換 Qwen3-ASR）辨識語音，
 經 OpenCC + 自訂詞表後處理輸出**台灣繁體中文**。目標是日常語音輸入工具。
 
 ## 快速指令
@@ -41,6 +41,27 @@ uv run pytest                        # 跑單元測試（processing/，毫秒級
 
 **D. 記憶**（在 repo 外 `~/.claude/...`，獨立於 commit）
 8. 學到非顯而易見的事才更新 memory（設計取捨、踩坑、慣例），純程式結構不記
+
+## 分支與回退政策
+
+- **預設：直接 commit 到主分支 `main`**（小步、漸進：bugfix、調參、文件、單一明確功能）。沿用「每階段就 commit」的習慣，線性歷史方便比較各階段 diff
+- **開分支（符合任一才開）**：① 可能整包丟掉的探索（試新引擎、大重構）② 跨多 commit、要做完才有意義的大功能 ③ 想並排比較兩做法 → 完成用 `git merge --no-ff` 合回 `main`
+- **回退優先 `git revert`（非破壞、加反向 commit），少用 `reset --hard`**（會丟掉可能已被參照的工作）
+- 此政策覆蓋 harness「在預設分支就先開分支」的反射
+
+## 文件職責分工（單一真相來源，不重複）
+
+每類資訊只在**一處**維護，其他地方用連結指過去，避免多份抄寫各自漂移：
+
+| 檔案 | 負責 | 不該放什麼 |
+|------|------|-----------|
+| `README.md` | 人類上手：是什麼、怎麼裝、怎麼跑 | 會漂移的細節（架構、config 範例、功能清單）→ 改放連結 |
+| `CLAUDE.md`（本檔） | 架構與設計決策**正本** + 給 Claude 的工作慣例（含上方收尾流程） | — |
+| `docs/index.html` | 對外展示的完整互動版（**待翻新**，見 TODO） | — |
+| `TODO.md` | 待辦與藍圖 | — |
+| `.gitignore` | 「不該 commit 的清單」的**強制執行處** | — |
+
+**原則**：新增/修改文件前，先確認該資訊的「正本」在哪。已有正本就只改正本 + 他處放連結，**不要複製內容**。這是判斷型規範，靠遵守、無自動強制。
 
 ## 架構
 
@@ -97,15 +118,9 @@ uv run pytest                        # 跑單元測試（processing/，毫秒級
 - **Hotwords 實驗結論（已證實）**：短詞 hotwords（`"詞表 待辦 清單"`）最安全不影響品質；長句 hotwords 會導致標點全變句號、重複句、幻覺。擴充 initial_prompt 也有副作用（如「開發平台→開發平臺」）。詳見 `experiments/results/experiment_hotwords.json`
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
 - **context 不能引導簡繁（已證實，勿重試）**：`experiments/experiment_context.py` 跑過 11 組探針（指令/關鍵詞/繁體前文/簡體前文/英文/否定/熱詞），輸出 byte 完全相同，簡體比例全 23.7%。context 進到了 prompt 的 system 訊息、模型也收到，但對「輸出簡體還是繁體」無作用；它的用途是罕見專有名詞的熱詞偏置。`language` 參數也只支援 `Chinese`，無繁體選項
-- **Python 環境**：uv 管理，Python 3.12，PyTorch CUDA 12.4 從專用 index 安裝
+- **Python 環境**：uv 管理（鎖檔 `uv.lock`），Python 3.12，PyTorch CUDA 12.4 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
-- **程式碼風格**：ruff，line-length 100，規則集 E/F/I/UP/B/SIM
-
-## 工具鏈
-
-- **uv** — 套件管理（取代 pip + venv），鎖檔在 `uv.lock`
-- **ruff** — linter + formatter（取代 black + flake8），設定在 `pyproject.toml`
-- **PyTorch CUDA 12.4** — 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
+- **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest
 
 ## 台灣繁中轉換說明
 
@@ -117,23 +132,8 @@ ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
 
 ## 目前狀態
 
-v0.3 — 串流辨識可用。已驗證：
-- 模型載入 ✓、音檔辨識 ✓、麥克風辨識 ✓、簡轉繁 ✓、台灣用語替換 ✓
-- 多引擎切換 ✓（faster-whisper / Qwen），whisper 已設為預設、繁體+標點原生輸出 ✓
-- **全域快捷鍵 + System Tray** ✓ — `pynput` 熱鍵 + `pystray` 常駐 tray，Toggle 模式
-- **即時串流辨識** ✓ — StreamingVAD 即時切句（1000ms 靜音門檻）+ 逐句辨識 + 結束時一次複製。475s 長音檔驗證：26 段，最慢 3.4s/段，無幻覺
-- **VAD 切段** ✓ — Silero VAD 自適應切段（800ms→500ms→300ms 遞減），裝飾器模式包裝引擎（批次模式用）
-- **標點正規化** ✓ — 上下文感知半形→全形轉換，Pipeline 第一步（標點→OpenCC→詞表→輸出）
-- **轉錄 log** ✓ — JSONL 格式，每筆含時間戳/原始/處理後文字
-- **智慧 OpenCC** ✓ — 偵測簡體字才跑轉換，純繁體跳過（避免項目→專案、台→臺等過度轉換）
-- **詞表清理** ✓ — 刪除 no-op、加 OpenCC 反向修正（平臺→平台）、分類整理
-- **Hotwords** ✓ — config.yaml 可設定，已配置常見辨識錯誤詞（詞表、待辦、清單等）
-- **單元測試** ✓ — pytest 導入，`tests/` 38 個 case 覆蓋 `processing/` 三模組；階段收尾流程已明文化（見上方）
-
-## 後續方向
-- **直接輸出到游標位置** — 模擬鍵盤輸入取代剪貼簿（移出 MVP，技術複雜度高）
-- **多引擎支援** — ✓ Whisper/Qwen 已可切換；SenseVoice 待加
-- **Web UI 測試介面** — 瀏覽器介面，用於測試/展示/設定調整
+v0.3 — MVP 完成，進入後續改善階段。核心鏈路全數驗證通過：辨識／簡轉繁／台灣用語／串流辨識／VAD 切段／標點正規化／全域快捷鍵／轉錄 log／單元測試。
+功能細節見「架構」與「已確立的設計決策」；待辦與藍圖見 `TODO.md`。
 
 ## 注意事項
 
