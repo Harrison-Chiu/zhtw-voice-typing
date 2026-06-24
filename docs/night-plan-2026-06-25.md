@@ -35,7 +35,7 @@
 2. 狀態列多狀態色 — core（零依賴）
 3. 狀態列右鍵手動卸載/載入模型（零依賴）
 4a. whisper-turbo zh-TW 評測（transformers 已裝進 .venv + 權重已下載）
-4b. **〔延後·今晚不做〕** Fun-ASR-Nano 評測 — funasr 依賴地獄（umap-learn→llvmlite,且會威脅主環境），需改天互動式處理（獨立 Python 3.11 venv 隔離 或 GGUF/llama.cpp 路徑）
+4b. Fun-ASR-Nano 評測（今晚自行嘗試裝 funasr，**用隔離環境**，見任務 4b）
 5. 〔選配·有時間才做·排最後〕狀態列波形動畫 / 浮動 UI
 
 ---
@@ -100,11 +100,30 @@
   - 輸出簡體 → 該微調未達預期,屬「結論」非「錯誤」,照實記錄,判定不如現況 → 丟。
   - **判定丟棄時**:刪 `scripts/test_hf_whisper_zhtw.py`?→ 可保留腳本（在 scripts/ 不污染主程式）,但 config 不要改。結論寫進 TODO/CLAUDE.md。
 
-## 任務 4b — Fun-ASR-Nano 評測〔今晚延後,勿執行〕
+## 任務 4b — Fun-ASR-Nano 評測（今晚自行嘗試安裝）
 
-> **2026-06-25 更新**:funasr 安裝失敗(umap-learn→pynndescent→llvmlite 0.36 只支援 Python <3.10,且 funasr 會升級 numpy/torch 威脅主 `.venv`)。**今晚跳過**。改天互動式處理:優先開獨立 Python 3.11 venv 隔離,或評估 Fun-ASR-Nano 的 GGUF/llama.cpp 路徑(可繞開 Python 依賴)。下方步驟待環境就緒後再用。
+> **安裝授權**:使用者已授權「夜間自動執行時自行嘗試裝 funasr」。**鐵則:用隔離環境,絕不裝進主 `.venv`**（funasr 會升 numpy/torch，會弄壞現在能跑的 app）。
+>
+> **背景**:先前在 conda base(Python 3.13)裝失敗——umap-learn→pynndescent→llvmlite 0.36 只支援 py<3.10。推測獨立 Python 3.11 環境 resolver 會挑到正常的 llvmlite/numba。
+
+### 步驟 0 — 建隔離環境並裝 funasr（先做這步，失敗就放棄 4b）
+
+```
+cd D:\Harrison\code_test\asr-input
+uv venv .venv-funasr --python 3.11        # >=3.12 的警告無妨，這是測試環境
+uv pip install funasr --python ".venv-funasr\Scripts\python.exe"
+```
+
+- **`.venv-funasr` 記得加進 .gitignore**（或確認 `.venv*` 已被排除），別 commit。
+- 若還要 GPU 版 torch（CPU 跑 8 分鐘音檔太慢）：裝完 funasr 後再 `uv pip install torch --index-url https://download.pytorch.org/whl/cu124 --python ".venv-funasr\Scripts\python.exe"`。先看裝不裝得起來，再煩惱 GPU。
+- **錯誤訊號 + 方向**：
+  - 又卡 llvmlite/numba 編譯 → 試 `uv pip install funasr --python ...`（讓 resolver 自由挑新版）；仍不行就試 Python 3.10。
+  - 三次以內裝不起來 → **放棄 4b**，把錯誤摘要寫進 TODO，清掉 `.venv-funasr`，繼續其餘任務。**不要花整晚跟它纏鬥。**
+
+### 步驟 1 — 評測（裝成功才做）
 
 - **檔案**:新增 `src/asr_input/asr/funasr_nano.py`（繼承 `ASREngine`）+ `build_engine()` 加 `elif engine_name == "funasr_nano"` 分支。
+- **注意**:funasr 在 `.venv-funasr`，不在主 `.venv`。評測腳本要用 `.venv-funasr\Scripts\python.exe` 跑（adapter 與測試走隔離環境；確認可用、值得留，才談整合進主環境）。
 - **做法**:
   1. 用 `funasr` 的 `AutoModel`,`hub="hf"`,model 指向 `FunAudioLLM/Fun-ASR-Nano-2512`（API 細節寫 adapter 時上網/讀 repo 確認）。
   2. `transcribe()`:吃 16k np.ndarray → 回字串。
