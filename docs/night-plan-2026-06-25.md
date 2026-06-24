@@ -5,8 +5,11 @@
 
 ## 全域原則（重要）
 
-- **不可安裝套件 / 不可建 venv**:此環境 AppData 有虛擬化,安裝結果只在沙箱可見(見 CLAUDE.md Windows 限制)。使用者已於睡前手動裝好 `transformers`、`funasr` 並預下載權重。
-  - **若 runtime `import` 失敗(套件缺) → 不要嘗試安裝**。記錄「缺哪個套件」到該任務的 commit message 或 TODO,跳過該任務、繼續下一個。
+- **環境**:專案用 `.venv`（**Python 3.12**,路徑 `D:\Harrison\code_test\asr-input\.venv\Scripts\python.exe`）。conda base 是 Python 3.13、與本專案無關,**別用**。
+- **安裝套件的分離問題**:沙箱與使用者環境分離,我這邊裝的使用者看不到。我**可以**為了自己驗證而裝,但裝完**必須明確留下「使用者若要實作需自行執行的指令」**。
+  - 使用者睡前狀態:**`transformers` 已裝進 `.venv`、whisper-zh-TW + Fun-ASR-Nano 權重已下載**;**`funasr` 未裝(依賴地獄,延後)**。
+  - **若 runtime `import` 失敗(套件缺) → 不要在使用者環境硬裝**。記錄「缺哪個套件 + 使用者該跑的指令」到 commit message / TODO,跳過該任務、繼續下一個。
+  - 安裝務必指定 `.venv`:`uv pip install -U <pkg> --python "D:\Harrison\code_test\asr-input\.venv\Scripts\python.exe"`,否則會裝到 conda base。
 - **可逆安全網**:模型測試若把環境弄亂,`uv sync` 可還原到 `uv.lock` 狀態。
 - **模型測試零污染原則**:新模型一律「能跑就跑測試音檔、眼睛驗、不行就丟」。丟 = 刪掉新增的 adapter 檔 + 移除 `build_engine()` 分支 + config 還原,**不留痕跡**。
 - **測試音檔**:`data/test_audio/簡報日.m4a`（8 分鐘,含已知幻覺段）。
@@ -17,8 +20,8 @@
 1. 啟動拆段計時（零依賴）
 2. 狀態列多狀態色 — core（零依賴）
 3. 狀態列右鍵手動卸載/載入模型（零依賴）
-4a. whisper-turbo zh-TW 評測（需使用者已裝 transformers + 下載權重）
-4b. Fun-ASR-Nano 評測（需使用者已裝 funasr + 下載權重）
+4a. whisper-turbo zh-TW 評測（transformers 已裝進 .venv + 權重已下載）
+4b. **〔延後·今晚不做〕** Fun-ASR-Nano 評測 — funasr 依賴地獄（umap-learn→llvmlite,且會威脅主環境），需改天互動式處理（獨立 Python 3.11 venv 隔離 或 GGUF/llama.cpp 路徑）
 5. 〔選配·有時間才做·排最後〕狀態列波形動畫 / 浮動 UI
 
 ---
@@ -83,7 +86,9 @@
   - 輸出簡體 → 該微調未達預期,屬「結論」非「錯誤」,照實記錄,判定不如現況 → 丟。
   - **判定丟棄時**:刪 `scripts/test_hf_whisper_zhtw.py`?→ 可保留腳本（在 scripts/ 不污染主程式）,但 config 不要改。結論寫進 TODO/CLAUDE.md。
 
-## 任務 4b — Fun-ASR-Nano 評測
+## 任務 4b — Fun-ASR-Nano 評測〔今晚延後,勿執行〕
+
+> **2026-06-25 更新**:funasr 安裝失敗(umap-learn→pynndescent→llvmlite 0.36 只支援 Python <3.10,且 funasr 會升級 numpy/torch 威脅主 `.venv`)。**今晚跳過**。改天互動式處理:優先開獨立 Python 3.11 venv 隔離,或評估 Fun-ASR-Nano 的 GGUF/llama.cpp 路徑(可繞開 Python 依賴)。下方步驟待環境就緒後再用。
 
 - **檔案**:新增 `src/asr_input/asr/funasr_nano.py`（繼承 `ASREngine`）+ `build_engine()` 加 `elif engine_name == "funasr_nano"` 分支。
 - **做法**:
