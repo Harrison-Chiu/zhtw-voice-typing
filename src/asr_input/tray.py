@@ -5,6 +5,7 @@ from __future__ import annotations
 import enum
 import signal
 import threading
+import time
 
 import pystray
 import torch
@@ -98,6 +99,7 @@ class TrayApp:
 
         self._config = load_config()
         asr_cfg = self._config["asr"]
+        self._device = asr_cfg.get("device", "cuda")
         self._sample_rate = self._config["audio"]["sample_rate"]
         hotkey_str = self._config.get("hotkey", {}).get("combination", DEFAULT_HOTKEY)
         self._hotkey = _parse_hotkey(hotkey_str)
@@ -141,14 +143,32 @@ class TrayApp:
         self._tray.run()
 
     def _setup(self) -> None:
+        # CUDA 暖機：第一次把 tensor 丟到 GPU 會觸發 CUDA context 初始化，
+        # 跟「載權重」是兩段不同成本，分開計時才看得出時間花在哪。
+        t0 = time.perf_counter()
+        if self._device != "cpu" and torch.cuda.is_available():
+            torch.zeros(1).to(self._device)
+            torch.cuda.synchronize()
+        warmup_sec = time.perf_counter() - t0
+
         print("載入模型中...", flush=True)
+        t0 = time.perf_counter()
         self._engine.load()
+        whisper_sec = time.perf_counter() - t0
         print("ASR 模型載入完成!", flush=True)
 
         print("載入 VAD 模型...", flush=True)
+        t0 = time.perf_counter()
         model, _ = torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True)
         self._vad_model = model
+        vad_sec = time.perf_counter() - t0
         print("VAD 模型載入完成!", flush=True)
+
+        print(
+            f"[計時] CUDA 暖機: {warmup_sec:.1f}s / "
+            f"載 Whisper: {whisper_sec:.1f}s / 載 VAD: {vad_sec:.1f}s",
+            flush=True,
+        )
 
         self._set_state(State.IDLE)
         print(f"快捷鍵: {self._hotkey_label}（串流錄音切換）", flush=True)
