@@ -1,0 +1,113 @@
+# 夜間自動執行計劃 — 2026-06-25
+
+> 給「半夜被 cron 喚醒自動執行」的 Claude 看。本檔是**單一真相來源**,即使對話被壓縮也以此為準。
+> 收尾流程依 CLAUDE.md「階段收尾流程」:每個任務做完 `ruff format/check` → `pytest` → 視情況更新 TODO/CLAUDE.md → commit。
+
+## 全域原則（重要）
+
+- **不可安裝套件 / 不可建 venv**:此環境 AppData 有虛擬化,安裝結果只在沙箱可見(見 CLAUDE.md Windows 限制)。使用者已於睡前手動裝好 `transformers`、`funasr` 並預下載權重。
+  - **若 runtime `import` 失敗(套件缺) → 不要嘗試安裝**。記錄「缺哪個套件」到該任務的 commit message 或 TODO,跳過該任務、繼續下一個。
+- **可逆安全網**:模型測試若把環境弄亂,`uv sync` 可還原到 `uv.lock` 狀態。
+- **模型測試零污染原則**:新模型一律「能跑就跑測試音檔、眼睛驗、不行就丟」。丟 = 刪掉新增的 adapter 檔 + 移除 `build_engine()` 分支 + config 還原,**不留痕跡**。
+- **測試音檔**:`data/test_audio/簡報日.m4a`（8 分鐘,含已知幻覺段）。
+- **不要動** `streaming.py` 的幻覺偵測（為 Whisper 調的,本階段不重構;模型測試階段把它當背景）。
+
+## 執行順序
+
+1. 啟動拆段計時（零依賴）
+2. 狀態列多狀態色 — core（零依賴）
+3. 狀態列右鍵手動卸載/載入模型（零依賴）
+4a. whisper-turbo zh-TW 評測（需使用者已裝 transformers + 下載權重）
+4b. Fun-ASR-Nano 評測（需使用者已裝 funasr + 下載權重）
+5. 〔選配·有時間才做·排最後〕狀態列波形動畫 / 浮動 UI
+
+---
+
+## 任務 1 — 啟動流程拆段計時
+
+- **目標**:量出 CUDA 暖機 vs 載權重各花多久。
+- **檔案**:`src/asr_input/tray.py` `_setup()`
+- **做法**:
+  1. `engine.load()` 前插 CUDA 暖機計時:`torch.zeros(1).to(device); torch.cuda.synchronize()`，`device` 讀 config（cpu 時跳過 synchronize）。
+  2. 分別 `time.perf_counter()` 計時:CUDA 暖機 / `engine.load()` / VAD `torch.hub.load`。
+  3. 印 `[計時] CUDA 暖機: X.Xs / 載 Whisper: X.Xs / 載 VAD: X.Xs`。
+- **驗收**:啟動印出三行,總和 ≈ 體感等待。
+- **錯誤訊號 + 方向**:
+  - 若三段相加遠小於體感總時間 → 漏算了某段（可能 `import torch` 本身,在 module top）。方向:在 `main()` 最前面補一個「程式啟動到進 `_setup` 」的粗計時。
+  - CUDA 暖機數字抖動大（多跑幾次差很多）→ 屬正常,退回只留「載 Whisper / 載 VAD」兩段。不算失敗。
+
+## 任務 2 — 狀態列多狀態色（core）
+
+- **目標**:狀態更易辨識。
+- **檔案**:`src/asr_input/tray.py` `COLORS` / `State` / `_make_icon`
+- **做法**:現有 4 狀態配色拉開對比;`_make_icon` 可把段數數字 render 進圖示（PIL `ImageDraw.text`）。
+- **驗收**:四狀態肉眼可區分。
+- **錯誤訊號 + 方向**:
+  - 圖示色沒更新 → pystray 需重設 `icon.icon`；若選單標籤沒刷新需 `icon.update_menu()`。
+  - 數字字型缺 → PIL 預設字型即可,不要依賴系統字型路徑。
+
+## 任務 3 — 狀態列右鍵手動卸載/載入模型
+
+- **目標**:不關程式即可釋放 ~2GB VRAM。
+- **檔案**:`src/asr_input/tray.py`（選單、load/unload handler、新增 `UNLOADED` 狀態）
+- **做法**:
+  1. 選單加項,標籤隨狀態切「卸載模型(釋放顯卡)」/「載入模型」,切換後 `icon.update_menu()`。
+  2. 卸載:`engine.unload()` + `torch.cuda.empty_cache()`,狀態設 `UNLOADED`(灰)。
+  3. 守衛 `_toggle()`:`UNLOADED` 按快捷鍵 → 通知「請先載入模型」,不錄音。
+  4. 守衛:`STREAMING`/`TRANSCRIBING` 禁止卸載。
+  5. 載入在背景執行緒（30–60s），完成回 `IDLE`。
+- **驗收**:右鍵卸載 → `nvidia-smi` VRAM 掉 ~2GB;載入 → 回升、錄音恢復;串流中卸載項為灰/停用。
+- **錯誤訊號 + 方向**:
+  - VRAM 沒完全歸零 → caching allocator 保留 reserved 屬正常,`empty_cache()` 後仍殘留可接受,不算失敗,文件註明即可。
+  - 卸載後又被觸發錄音導致 crash → 代表守衛沒擋住,優先補 `_toggle()` 的 `UNLOADED` 檢查。
+  - 重載卡死 → 確認舊 session 已 `stop()`、舊 engine 已釋放再 `load()`。
+
+## 任務 4a — whisper-turbo zh-TW 評測
+
+- **接法（重要）**:**不要走 faster-whisper**（它只吃 CTranslate2 格式,要轉檔）。本評測用 `transformers` pipeline 直接跑,目的只是「看品質值不值得」。
+- **檔案**:新增 `scripts/test_hf_whisper_zhtw.py`（一次性測試腳本,放 scripts/）
+- **做法**:
+  1. 用現有 `FileAudioSource` 解碼 `data/test_audio/簡報日.m4a` 成 16k np.ndarray（重用現成解碼,不要自己寫 ffmpeg）。
+  2. `transformers` ASR pipeline,`model="JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW"`,**務必 `chunk_length_s=30`**（8 分鐘音訊不切會 OOM）。
+  3. 印原始輸出;另跑一份過現有 `build_pipeline` 後處理的輸出對照。
+  4. **同時跑一份現況基準**:用現有 config（large-v3-turbo + faster-whisper）跑同一支音檔,兩者並列,才能比較。
+- **驗收（眼睛判斷,給自動執行的明確準則）**:
+  - 是否**原生繁體**（掃有無簡體字,如「软/视/启/发」）。
+  - 標點是否正常且全形,**沒有**大量 `…` 連續、**沒有**逗號被空白取代。
+  - 內容沒有幻覺式重複。
+  - **短句穩定度 ≥ 現況基準**（這是換它的主要動機）。
+- **錯誤訊號 + 方向**:
+  - `import transformers` 失敗 → 使用者沒裝成功,**不要自行安裝**,記錄後跳到 4b。
+  - m4a 解不開 → `FileAudioSource` 已能解（既有測試就用 .m4a）,若仍失敗檢查是否被改動。
+  - OOM → 確認有設 `chunk_length_s`,並用 `torch_dtype=float16`、`device=0`。
+  - 輸出簡體 → 該微調未達預期,屬「結論」非「錯誤」,照實記錄,判定不如現況 → 丟。
+  - **判定丟棄時**:刪 `scripts/test_hf_whisper_zhtw.py`?→ 可保留腳本（在 scripts/ 不污染主程式）,但 config 不要改。結論寫進 TODO/CLAUDE.md。
+
+## 任務 4b — Fun-ASR-Nano 評測
+
+- **檔案**:新增 `src/asr_input/asr/funasr_nano.py`（繼承 `ASREngine`）+ `build_engine()` 加 `elif engine_name == "funasr_nano"` 分支。
+- **做法**:
+  1. 用 `funasr` 的 `AutoModel`,`hub="hf"`,model 指向 `FunAudioLLM/Fun-ASR-Nano-2512`（API 細節寫 adapter 時上網/讀 repo 確認）。
+  2. `transcribe()`:吃 16k np.ndarray → 回字串。
+  3. **重點驗引導性**:在它的 prompt/context（讀 repo 確認參數名）餵「使用台灣繁體中文」,看會不會吐繁體。這是它對比 Whisper 的關鍵賣點。
+  4. config 暫切 `engine: funasr_nano`,跑 `scripts/test_audio_file.py` 簡報音檔。
+- **驗收**:能被引導出繁體 + 品質 ≥ 現況基準。
+- **錯誤訊號 + 方向**:
+  - `import funasr` 失敗 → 使用者沒裝,**不要自行安裝**,記錄後結束模型階段。
+  - `AutoModel` 載入報錯（hub/路徑）→ 先試 `hub="hf"`,再試預設(modelscope);確認權重已在 HF cache。
+  - 找不到 prompt/引導參數 → 讀 `FunAudioLLM/Fun-ASR-Nano-2512` 的 HF README 或 Fun-ASR GitHub 範例;若確實無引導機制,結論記為「不可引導」,看原生輸出是繁是簡再判。
+  - 依賴衝突弄壞環境 → `uv sync` 還原。
+  - **判定丟棄時**:刪 `src/asr_input/asr/funasr_nano.py` + 移除 `build_engine()` 分支 + config 還原成 `whisper`。
+
+## 任務 5 〔選配·排最後·有時間才做〕— 狀態列波形動畫 / 浮動 UI
+
+- **前置**:streaming 目前**無即時音量回呼**,真波形要新增 callback,工程量大。
+- **方向**:若評估要動 `streaming.py` 才拿得到即時振幅 → **本任務直接略過**,只在計劃留記錄。系統匣本身有節流,即時性有天花板（要真即時須做獨立浮動視窗,屬更大的 TODO）。
+
+---
+
+## 收尾與回報
+
+- 每完成一個任務就 commit（中文訊息,講清楚改了什麼）。
+- 模型評測結論（4a/4b 是繁是簡、品質如何、是否採用）寫進 `CLAUDE.md`「已確立的設計決策」+ `TODO.md`。
+- 全部跑完,在最後留一則總結:哪些做完、哪些因套件缺/品質不足而跳過、後續建議。
