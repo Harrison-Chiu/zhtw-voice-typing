@@ -112,6 +112,7 @@ uv run pytest                        # 跑單元測試（processing/，毫秒級
 ## 已確立的設計決策（不要重做）
 
 - **ASR 引擎**：**預設改用 faster-whisper large-v3-turbo**（~2GB VRAM、辨識 ~0.5s）。Qwen3-ASR 1.7B 保留為備用引擎。可在 `config.yaml` 的 `asr.engine` 切換（`whisper` / `qwen`）
+- **whisper-turbo zh-TW 微調評測結論（不採用，已證實）**：測 `JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW`，走 transformers pipeline `chunk_length_s=30`。原生繁體+原生全形標點（這點贏 baseline 的 raw），但 8 分鐘長音檔分塊（transformers 官方標 experimental）跑出**災難性重複迴圈**（單字灌數百次）、專有名詞錯更多、句界漏併。baseline（faster-whisper + VAD 切段 + 短 prompt + 後處理）更穩，且全形標點後處理已補足，**不值得為它做 CT2 轉檔或另建 VAD 路徑**。腳本 `scripts/test_hf_whisper_zhtw.py`
 - **Whisper initial_prompt 能引導繁體+標點（已證實）**：短繁體句+全形標點（`繁體中文，台灣用語。`）→ 輸出原生 0% 簡體 + 帶標點。prompt 字體決定輸出字體、prompt 標點決定輸出標點，兩者獨立。詳見 `experiments/experiment_whisper_prompt.py`。這跟 Qwen 的 context 完全相反
 - **標點全形化靠後處理，不靠 prompt（已證實，勿重試）**：三輪實驗（v1-v3）測試了 15+ 種 prompt、hotwords、suppress_tokens。結論：長 prompt 可提高全形率但引入亂碼/幻覺；hotwords 對多 token 標點無效；suppress 半形逗號會被句號取代。最穩方案是短 prompt + `PunctuationNormalizer` 後處理（看前後字元判斷中英文語境）。實驗結果見 `experiments/results/experiment_punct_v2.json`、`experiments/results/experiment_punct_v3.json`、`experiments/results/experiment_viewer.html`
 - **繁中轉換策略**：簡轉繁**只能靠** OpenCC s2twp + 自訂詞表後處理。context 引導已實驗證明**零效果**（見下）。OpenCC 設有智慧偵測：白名單排除「台」等台灣常用異體，其餘有任何簡體字才觸發轉換

@@ -23,6 +23,9 @@
 - [ ] hotwords 使用者自訂機制 — 讓使用者可手動新增常用詞/專有名詞，不預設
 
 ### 使用體驗
+- [x] 啟動流程拆段計時 — tray._setup() 分段印 CUDA 暖機 / 載 Whisper / 載 VAD
+- [x] 狀態列多狀態色 + 串流段數疊加 — 灰/綠/紅/琥珀對比拉開，圖示疊加已完成段數
+- [x] 狀態列右鍵手動卸載/載入模型 — 釋放 ~2GB VRAM，UNLOADED 狀態 + 守衛
 - [ ] 直接輸出到游標位置 — 模擬鍵盤輸入取代剪貼簿（SendInput/pynput，需處理焦點、速度、中文輸入相容性等問題）
 - [ ] 信心程度標示 — 低信心詞高亮，方便人工確認
 - [ ] OpenCC 差異標示 — 只標出替換的詞，不重複整段輸出
@@ -39,4 +42,7 @@
 - [ ] docs/index.html 翻新 — 目前凍結在 v0.1（引擎寫 Qwen、結構樹缺串流/tray、roadmap 把已完成的當未來）。等正式規劃「後續改善」時連同 roadmap 一次重寫
 - [ ] Web UI 測試介面 — 瀏覽器介面，用於測試/展示/設定調整
 - [ ] 多引擎擴充 — SenseVoice 等其他引擎
+  - [x] whisper-turbo zh-TW 微調評測（4a）→ **不採用**。原生繁體+全形標點，但 transformers 30s 長音檔分塊（官方標 experimental）跑出災難性重複迴圈（「能量量量…」數百字）、專有名詞錯更多、漏併段。baseline+VAD 更穩，候選唯一優勢（全形標點）後處理已補足。腳本留 `scripts/test_hf_whisper_zhtw.py`
+  - [ ] Fun-ASR-Nano 評測（4b）— 待夜間嘗試裝 funasr（隔離環境）
+- [ ] **環境修：numpy 2.5 vs numba 衝突** — `-U transformers` 把 numpy 升到 2.5，numba 要 ≤2.4 → librosa 解碼掛掉（`scripts/test_audio_file.py` 受影響；麥克風 app 走 sounddevice 不受影響）。需固定 numpy<2.5 或在 file-decode 改用 ffmpeg。`uv sync` 可還原但會動到 transformers
 - [ ] 自動安裝/打包 — exe 或 installer
