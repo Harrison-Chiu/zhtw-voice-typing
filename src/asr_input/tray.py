@@ -25,6 +25,7 @@ class State(enum.Enum):
     IDLE = "idle"
     STREAMING = "streaming"
     TRANSCRIBING = "transcribing"
+    UNLOADED = "unloaded"
 
 
 # 配色刻意拉開色相對比，讓 16-32px 的系統匣圖示一眼可辨：
@@ -34,6 +35,7 @@ COLORS = {
     State.IDLE: "#43A047",
     State.STREAMING: "#E53935",
     State.TRANSCRIBING: "#FB8C00",
+    State.UNLOADED: "#455A64",
 }
 
 LABELS = {
@@ -41,6 +43,7 @@ LABELS = {
     State.IDLE: "待機（按快捷鍵錄音）",
     State.STREAMING: "串流辨識中...",
     State.TRANSCRIBING: "辨識中...",
+    State.UNLOADED: "已卸載（從選單載入模型）",
 }
 
 DEFAULT_HOTKEY = "ctrl+shift+space"
@@ -140,6 +143,15 @@ class TrayApp:
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: LABELS[self._state], None, enabled=False),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                lambda item: (
+                    "載入模型" if self._state == State.UNLOADED else "卸載模型（釋放顯卡）"
+                ),
+                self._on_toggle_model,
+                # 只有待機或已卸載可切換；錄音/辨識/載入中禁用，避免狀態打架
+                enabled=lambda item: self._state in (State.IDLE, State.UNLOADED),
+            ),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("結束", self._on_quit),
         )
         self._tray = pystray.Icon(
@@ -217,10 +229,42 @@ class TrayApp:
 
     def _toggle(self) -> None:
         with self._lock:
+            if self._state == State.UNLOADED:
+                _silent_notify(self._tray, "模型未載入 — 請先從選單載入模型", "ASR Input")
+                return
             if self._state == State.IDLE:
                 self._start_streaming()
             elif self._state == State.STREAMING:
                 threading.Thread(target=self._stop_streaming, daemon=True).start()
+
+    def _on_toggle_model(self, icon, item) -> None:
+        # 選單已用 enabled 守衛限定 IDLE/UNLOADED，這裡再判一次保險
+        if self._state == State.UNLOADED:
+            threading.Thread(target=self._load_model, daemon=True).start()
+        elif self._state == State.IDLE:
+            self._unload_model()
+
+    def _unload_model(self) -> None:
+        self._engine.unload()
+        if self._device != "cpu" and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        self._set_state(State.UNLOADED)
+        if self._tray:
+            self._tray.update_menu()
+        print("模型已卸載，顯卡記憶體已釋放。", flush=True)
+        _silent_notify(self._tray, "模型已卸載，顯卡記憶體已釋放", "ASR Input")
+
+    def _load_model(self) -> None:
+        self._set_state(State.LOADING)
+        if self._tray:
+            self._tray.update_menu()
+        print("重新載入模型中...", flush=True)
+        self._engine.load()
+        self._set_state(State.IDLE)
+        if self._tray:
+            self._tray.update_menu()
+        print("模型載入完成!", flush=True)
+        _silent_notify(self._tray, f"模型已載入 — {self._hotkey_label} 開始錄音", "ASR Input")
 
     def _start_streaming(self) -> None:
         vad_cfg = self._config.get("vad", {})
