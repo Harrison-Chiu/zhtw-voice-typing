@@ -9,7 +9,7 @@ import time
 
 import pystray
 import torch
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pynput import keyboard
 
 from asr_input.asr import build_engine
@@ -27,11 +27,13 @@ class State(enum.Enum):
     TRANSCRIBING = "transcribing"
 
 
+# 配色刻意拉開色相對比，讓 16-32px 的系統匣圖示一眼可辨：
+# 灰(待命載入) / 綠(就緒) / 紅(錄音中) / 琥珀(辨識運算中)。
 COLORS = {
-    State.LOADING: "#888888",
-    State.IDLE: "#4CAF50",
-    State.STREAMING: "#F44336",
-    State.TRANSCRIBING: "#FF9800",
+    State.LOADING: "#9E9E9E",
+    State.IDLE: "#43A047",
+    State.STREAMING: "#E53935",
+    State.TRANSCRIBING: "#FB8C00",
 }
 
 LABELS = {
@@ -68,10 +70,24 @@ def _parse_hotkey(combo: str) -> set:
     return keys
 
 
-def _make_icon(color: str) -> Image.Image:
+def _make_icon(color: str, count: int | None = None) -> Image.Image:
     img = Image.new("RGBA", (64, 64))
     draw = ImageDraw.Draw(img)
-    draw.ellipse((8, 8, 56, 56), fill=color)
+    draw.ellipse((4, 4, 60, 60), fill=color)
+    if count is not None:
+        text = str(count)
+        try:
+            font = ImageFont.load_default(size=40)
+        except TypeError:  # 舊版 Pillow 的 load_default 不吃 size 參數
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        draw.text(
+            (32 - tw / 2 - bbox[0], 32 - th / 2 - bbox[1]),
+            text,
+            fill="white",
+            font=font,
+        )
     return img
 
 
@@ -258,9 +274,10 @@ class TrayApp:
         self._set_state(State.IDLE)
 
     def _on_transcribing(self, audio_sec: float) -> None:
-        """Called when a segment starts being transcribed — flash orange."""
+        """Called when a segment starts being transcribed — flash amber."""
         if self._tray:
-            self._tray.icon = _make_icon(COLORS[State.TRANSCRIBING])
+            seg_count = self._session.segment_count if self._session else 0
+            self._tray.icon = _make_icon(COLORS[State.TRANSCRIBING], count=seg_count)
             self._tray.title = f"ASR — 辨識 {audio_sec:.0f}s 音訊中..."
 
     def _on_partial_result(self, latest_segment: str, accumulated: str) -> None:
@@ -268,7 +285,7 @@ class TrayApp:
         if self._tray:
             seg_count = self._session.segment_count if self._session else 0
             char_count = len(accumulated)
-            self._tray.icon = _make_icon(COLORS[State.STREAMING])
+            self._tray.icon = _make_icon(COLORS[State.STREAMING], count=seg_count)
             self._tray.title = f"ASR — {seg_count}段 {char_count}字 | {latest_segment[:50]}"
 
     def _set_state(self, state: State) -> None:
