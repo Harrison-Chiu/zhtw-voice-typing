@@ -43,6 +43,6 @@
 - [ ] Web UI 測試介面 — 瀏覽器介面，用於測試/展示/設定調整
 - [ ] 多引擎擴充 — SenseVoice 等其他引擎
   - [x] whisper-turbo zh-TW 微調評測（4a）→ **不採用**。原生繁體+全形標點，但 transformers 30s 長音檔分塊（官方標 experimental）跑出災難性重複迴圈（「能量量量…」數百字）、專有名詞錯更多、漏併段。baseline+VAD 更穩，候選唯一優勢（全形標點）後處理已補足。腳本留 `scripts/test_hf_whisper_zhtw.py`
-  - [ ] Fun-ASR-Nano 評測（4b）— 待夜間嘗試裝 funasr（隔離環境）
+  - [x] Fun-ASR-Nano 評測（4b）→ **暫不採用（版本卡關）**。隔離環境 `.venv-funasr`（py3.11）裝 funasr 一次成功（避開 conda py3.13 的 llvmlite 地獄）；但 `pip install funasr`(1.3.14) 載入 Fun-ASR-Nano-2512 缺 ctc_decoder 權重 → 輸出退化成單字重複垃圾。研判 funasr 版本對不上。重試方向：依 FunAudioLLM 官方 GitHub requirements 裝指定版本。腳本 `scripts/test_funasr_nano.py`
 - [ ] **環境修：numpy 2.5 vs numba 衝突** — `-U transformers` 把 numpy 升到 2.5，numba 要 ≤2.4 → librosa 解碼掛掉（`scripts/test_audio_file.py` 受影響；麥克風 app 走 sounddevice 不受影響）。需固定 numpy<2.5 或在 file-decode 改用 ffmpeg。`uv sync` 可還原但會動到 transformers
 - [ ] 自動安裝/打包 — exe 或 installer
