@@ -127,6 +127,8 @@ class TrayApp:
         streaming_cfg = self._config.get("streaming", {})
         self._silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
         self._verbose = streaming_cfg.get("verbose", False)
+        # 預設關閉（空轉，見 config.yaml startup 區塊說明）
+        self._cuda_warmup = self._config.get("startup", {}).get("cuda_warmup", False)
 
         # Build ASR engine WITHOUT VadSegmentedEngine wrapper —
         # streaming mode handles segmentation via StreamingVAD.
@@ -171,12 +173,15 @@ class TrayApp:
         self._tray.run()
 
     def _setup(self) -> None:
-        # CUDA 暖機：第一次把 tensor 丟到 GPU 會觸發 CUDA context 初始化，
-        # 跟「載權重」是兩段不同成本，分開計時才看得出時間花在哪。
+        # CUDA 暖機：第一次把 tensor 丟到 GPU 會觸發 PyTorch CUDA context 初始化。
+        # 預設關閉——目前 ASR 走 CTranslate2、VAD 跑 CPU，沒有 PyTorch GPU 工作會用到
+        # 這個 context，暖機是空轉。開關在 config.yaml startup.cuda_warmup（給未來預留）。
         t0 = time.perf_counter()
-        if self._device != "cpu" and torch.cuda.is_available():
+        warmed = False
+        if self._cuda_warmup and self._device != "cpu" and torch.cuda.is_available():
             torch.zeros(1).to(self._device)
             torch.cuda.synchronize()
+            warmed = True
         warmup_sec = time.perf_counter() - t0
 
         print("載入模型中...", flush=True)
@@ -192,8 +197,9 @@ class TrayApp:
         vad_sec = time.perf_counter() - t0
         print("VAD 模型載入完成!", flush=True)
 
+        warmup_str = f"{warmup_sec:.1f}s" if warmed else "關閉"
         print(
-            f"[計時] CUDA 暖機: {warmup_sec:.1f}s / "
+            f"[計時] CUDA 暖機: {warmup_str} / "
             f"載 Whisper: {whisper_sec:.1f}s / 載 VAD: {vad_sec:.1f}s",
             flush=True,
         )

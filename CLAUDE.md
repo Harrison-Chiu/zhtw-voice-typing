@@ -122,6 +122,8 @@ uv run pytest                        # 跑單元測試（processing/，毫秒級
 - **Hotwords 實驗結論（已證實）**：短詞 hotwords（`"詞表 待辦 清單"`）最安全不影響品質；長句 hotwords 會導致標點全變句號、重複句、幻覺。擴充 initial_prompt 也有副作用（如「開發平台→開發平臺」）。詳見 `experiments/results/experiment_hotwords.json`
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
 - **context 不能引導簡繁（已證實，勿重試）**：`experiments/experiment_context.py` 跑過 11 組探針（指令/關鍵詞/繁體前文/簡體前文/英文/否定/熱詞），輸出 byte 完全相同，簡體比例全 23.7%。context 進到了 prompt 的 system 訊息、模型也收到，但對「輸出簡體還是繁體」無作用；它的用途是罕見專有名詞的熱詞偏置。`language` 參數也只支援 `Chinese`，無繁體選項
+- **CUDA 暖機預設關閉（空轉，2026-06-28）**：tray 啟動原有 `torch.zeros(1).to(cuda)` 暖機，本意是提前觸發 CUDA context 初始化以縮短首次推論延遲。但 faster-whisper 推論走 CTranslate2（自帶獨立 CUDA 初始化，不共用 PyTorch context）、Silero VAD 跑在 CPU（`tray.py` / `streaming_vad.py` 都未把 model/tensor `.to(device)`）→ 進程內沒有任何 PyTorch GPU 工作會用到這個 context，暖機純空轉（實測 ~0.1s）。改由 config `startup.cuda_warmup` 控制，**預設 `false`**，保留開關給未來（改用 PyTorch-based ASR 引擎、或讓 VAD 上 GPU 時再開）
+- **tray 首次載入 ~27s 的歸因（已測，2026-06-28）**：啟動計時顯示瓶頸全在「載 Whisper」（暖機僅 0.1s、載 VAD ~1.2s）。大宗是**首次冷讀磁碟**——CTranslate2/cuDNN 等原生 DLL（隨 `import faster_whisper` 載入）+ ~2GB 權重檔（`WhisperModel()` 建構時讀進 GPU）。卸載→重載快很多，因 DLL 已常駐進程、權重已進 OS 檔案快取、CT2 已初始化，只剩「把已快取權重再讀進 GPU」。細分腳本 `experiments/profile_cold_start.py`（熱快取下各階段總和 ~9.5s，遠低於冷啟的 27.7s；要量真冷啟須重開機後第一件事就跑）
 - **Python 環境**：uv 管理（鎖檔 `uv.lock`），Python 3.12，PyTorch CUDA 12.4 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest
