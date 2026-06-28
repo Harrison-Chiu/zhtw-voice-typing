@@ -20,8 +20,7 @@
   - 修法：把 `update_menu()` 收進 `_set_state()`，移除 `_load_model`/`_unload_model` 裡重複的呼叫。串流回呼 `_on_partial_result`/`_on_transcribing` 走 `.icon=` 不經 `_set_state`，不受影響。
 
 ### 文字品質
-- [ ] 刪節號正規化 — Whisper 輸出 `...`（三個半形點）應轉換為 `…`（U+2026 全形刪節號），在 PunctuationNormalizer 中處理
-  - 現有 `PunctuationNormalizer.process()` 逐字元轉單一標點（`_HALF_TO_FULL` map），多字元的刪節號塞不進該迴圈 → 需另加 `re.sub(r"\.{3,}", "…", text)` 前處理，並比照現有設計只在 CJK 旁轉（避免誤傷英文 "wait..."）。半形句號 `.` 不在 `_HALF_TO_FULL`（避免誤傷小數點），不受影響。規模約 10 行 + 2 個 pytest case。
+- [x] 刪節號正規化 — `...`（3 個以上半形點）→ `…`（U+2026）。在 `punct_norm.py` 加 `_convert_ellipsis()` re 前處理，比照現有設計只在 CJK 旁轉（英文 "wait..." 保留），跑在逐字元迴圈之前。8 個 pytest case 涵蓋 CJK 旁/ASCII/兩點不匹配/六點併一。
 - [ ] 標點符號進階研究 — 嘗試更多 initial_prompt 策略、suppress_tokens 微調、或半形句號 `.` 的智慧轉換
 - [x] 聲學辨識錯誤 — hotwords 參數已接通，config.yaml 可設定（實驗證實短詞安全、長句有害）
   - 已配置：詞表、待辦、清單、聲學、標點、主分支

@@ -59,6 +59,26 @@ def test_mixed_cjk_and_ascii_boundary(normalizer):
     assert normalizer.process("中文 a,b 結尾") == "中文 a,b 結尾"
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # CJK adjacent → full-width ellipsis
+        ("好...", "好…"),
+        ("...世界", "…世界"),
+        ("我想想...再說", "我想想…再說"),
+        # 6 dots collapse to a single … (per spec)
+        ("好......的", "好…的"),
+        # ASCII context → untouched
+        ("wait...", "wait..."),
+        ("Hmm...", "Hmm..."),
+        # only 2 dots: regex doesn't match, dots pass through unchanged
+        ("好..的", "好..的"),
+    ],
+)
+def test_ellipsis_conversion(normalizer, text, expected):
+    assert normalizer.process(text) == expected
+
+
 @pytest.mark.parametrize("text", ["", "你好", "hello", ","])
 def test_edge_cases_no_crash(normalizer, text):
     # lone punctuation with no neighbours stays half-width; empty/plain text unchanged
