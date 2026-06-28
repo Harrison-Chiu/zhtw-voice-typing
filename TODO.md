@@ -60,4 +60,5 @@
     - **Qwen3-ASR 完全沒測**：但已整合，`config.yaml` 切 `asr.engine: qwen` 即可當非 Whisper 備援（限制：context 無法引導繁簡，仍靠 OpenCC 後處理，見 CLAUDE.md 設計決策）。
     - **重測規格**：受測 = faster-whisper(基準) / Qwen3-ASR / Fun-ASR-Nano(對版後)（SenseVoice 視時間加碼）；逐項記「原始輸出 + 後處理輸出 + 逐段對齊 + 耗時 + 指標(簡體殘留/全形標點率/重複偵測)」；輸出成 `experiments/results/` 結構化報告 + HTML viewer，讓人能逐段看「輸入長怎樣 → 哪個模型吐了什麼」。
 - [ ] **環境修：numpy 2.5 vs numba 衝突** — `-U transformers` 把 numpy 升到 2.5，numba 要 ≤2.4 → librosa 解碼掛掉（`scripts/test_audio_file.py` 受影響；麥克風 app 走 sounddevice 不受影響）。需固定 numpy<2.5 或在 file-decode 改用 ffmpeg。`uv sync` 可還原但會動到 transformers
-- [ ] 自動安裝/打包 — exe 或 installer
+- [x] 桌面捷徑啟動（免打指令）— `scripts/start_tray.vbs`（隱藏視窗）+ `start_tray.bat`（排錯用、有視窗）+ `create_desktop_shortcut.ps1`（建桌面捷徑，需使用者自行在終端跑：MSIX 沙箱下由 Claude 代建的捷徑落不到真實桌面）。vbs 刻意用 python.exe+隱藏視窗而非 pythonw（pythonw 下 sys.stdout 為 None，tray 的 print 會崩）
+- [ ] 自動安裝/打包 — exe 或 installer（獨立 .exe，不依賴 .venv/Python；輕量桌面捷徑已先行，見上）

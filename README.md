@@ -36,6 +36,17 @@ uv run python -m asr_input.tray   # System Tray 版（全域快捷鍵，日常�
 uv run python -m asr_input.main   # CLI 版（終端機互動）
 ```
 
+### 桌面捷徑啟動（免打指令）
+
+不想每次開終端機打指令，可建一個桌面捷徑，雙擊即啟動 tray（無視窗）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\create_desktop_shortcut.ps1
+```
+
+捷徑指向 [`scripts/start_tray.vbs`](scripts/start_tray.vbs)（隱藏視窗啟動）。
+排錯時改用 [`scripts/start_tray.bat`](scripts/start_tray.bat)（有視窗，看得到輸出與錯誤）。
+
 設定（引擎、裝置、語言、後處理、串流參數）都在 `config.yaml`，
 自訂台灣用語詞表在 `data/tw_dict.yaml`。
 
