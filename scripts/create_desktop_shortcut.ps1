@@ -1,4 +1,4 @@
-# 在桌面建立「ASR Input」捷徑，指向 start_tray.vbs（雙擊即啟動、無終端視窗）。
+﻿# 在桌面建立「ASR Input」捷徑，指向 start_tray.vbs（雙擊即啟動、無終端視窗）。
 #
 # 為何要由你在自己的終端跑：Claude Code Desktop 是 MSIX 沙箱，由它代建的捷徑
 # 會落在沙箱內、你的真實桌面看不到，故這支腳本交給你手動執行。
