@@ -15,11 +15,9 @@
 ## 後續改善
 
 ### 已知問題（Bug·待驗證/修復）
-- [ ] tray 右鍵選單不隨狀態刷新 — 載入完成後選單仍顯示「載入模型中」、「卸載模型」反灰，但圖示已轉綠、快捷鍵錄音正常。（待實機確認）
-  - 載入已完成的依據：`tray.py:_setup()` 結尾印計時行後才切 `_set_state(State.IDLE)`（約 tray.py:195-201），圖示轉綠即代表已到 IDLE → 問題在選單未刷新，非載入未完成。
-  - 機制：選單項目用動態 lambda 讀 `self._state`，pystray(Windows) 需 `icon.update_menu()` 才重建選單。`_load_model`/`_unload_model` 有呼叫（tray.py:253,260,265），`_set_state()` 沒有（tray.py:335-339）；圖示走 `.icon=` 直接設會即時反映，選單則停在建立時的 LOADING。
-  - 修法：把 `update_menu()` 收進 `_set_state()`，移除 `_load_model`/`_unload_model` 裡重複的呼叫；串流回呼 `_on_partial_result`/`_on_transcribing` 走 `.icon=` 不經 `_set_state`，不受影響。
-  - 驗收：開 tray → 圖示轉綠 → 右鍵應顯示「待機」且「卸載模型」可點。
+- [x] tray 右鍵選單不隨狀態刷新（已修，實機驗證通過）— 載入完成後選單卡在「載入模型中」、「卸載模型」反灰，但圖示已轉綠。
+  - 根因：選單項目用動態 lambda 讀 `self._state`，pystray(Windows) 需 `icon.update_menu()` 才重建選單。`_set_state()` 只更新 `.icon`/`.title`（走 `.icon=` 會即時反映），漏了選單刷新；初次載入完成走 `_setup()→_set_state(State.IDLE)` 這條路徑因而卡在建立時的 LOADING。
+  - 修法：把 `update_menu()` 收進 `_set_state()`，移除 `_load_model`/`_unload_model` 裡重複的呼叫。串流回呼 `_on_partial_result`/`_on_transcribing` 走 `.icon=` 不經 `_set_state`，不受影響。
 
 ### 文字品質
 - [ ] 刪節號正規化 — Whisper 輸出 `...`（三個半形點）應轉換為 `…`（U+2026 全形刪節號），在 PunctuationNormalizer 中處理

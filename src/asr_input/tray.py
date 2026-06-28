@@ -249,20 +249,14 @@ class TrayApp:
         if self._device != "cpu" and torch.cuda.is_available():
             torch.cuda.empty_cache()
         self._set_state(State.UNLOADED)
-        if self._tray:
-            self._tray.update_menu()
         print("模型已卸載，顯卡記憶體已釋放。", flush=True)
         _silent_notify(self._tray, "模型已卸載，顯卡記憶體已釋放", "ASR Input")
 
     def _load_model(self) -> None:
         self._set_state(State.LOADING)
-        if self._tray:
-            self._tray.update_menu()
         print("重新載入模型中...", flush=True)
         self._engine.load()
         self._set_state(State.IDLE)
-        if self._tray:
-            self._tray.update_menu()
         print("模型載入完成!", flush=True)
         _silent_notify(self._tray, f"模型已載入 — {self._hotkey_label} 開始錄音", "ASR Input")
 
@@ -337,6 +331,9 @@ class TrayApp:
         if self._tray:
             self._tray.icon = _make_icon(COLORS[state])
             self._tray.title = f"ASR Input — {LABELS[state]}"
+            # 選單項目用動態 lambda 讀 self._state，pystray(Windows) 需 update_menu()
+            # 才會重建選單；圖示走 .icon= 會即時反映，選單不會，故在此統一刷新。
+            self._tray.update_menu()
 
     def _on_quit(self, icon, item) -> None:
         print("結束。", flush=True)
