@@ -30,18 +30,19 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 2. `ruff check src/` — 檢查，有報錯就修
 3. `pytest` — 跑測試（每次都跑，僅 ~0.3s；目前只覆蓋 `processing/`）
 
-**B. 記錄更新**（repo 內檔案，會進同一個 commit）
-4. `TODO.md` — 完成項打勾、補新待辦
-5. `CLAUDE.md`：
+**B. 記錄更新**（repo 內檔案，會進同一個 commit；各檔職責見下方「文件職責分工」表）
+4. `CHANGELOG.md` — 這次完成的事各加一條（倒序、一行＋commit hash；hash 在 commit 後補，或先寫 `(pending)` 下次補）
+5. `TODO.md` — 移除/收掉已完成項（完成紀錄歸 CHANGELOG，不在此打勾留存）、補新待辦
+6. `CLAUDE.md`：
    - 「已確立的設計決策」— 有實驗結論／決定不重做的做法
    - 「目前狀態」— 功能落地、版本推進
 
 **C. 封板**
-6. `git status` 確認沒夾帶 `.m4a` / `.wav` / 模型權重
-7. `git commit`（中文訊息，講清楚改了什麼）
+7. `git status` 確認沒夾帶 `.m4a` / `.wav` / 模型權重
+8. `git commit`（中文訊息，講清楚改了什麼）
 
 **D. 記憶**（在 repo 外 `~/.claude/...`，獨立於 commit）
-8. 學到非顯而易見的事才更新 memory（設計取捨、踩坑、慣例），純程式結構不記
+9. 學到非顯而易見的事才更新 memory（設計取捨、踩坑、慣例），純程式結構不記
 
 ## 分支與回退政策
 
