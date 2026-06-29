@@ -190,7 +190,7 @@ function renderTagButtons(containerId, tags, cls) {
   const container = document.getElementById(containerId);
   tags.forEach(tag => {
     const count = DATA.filter(d => d._tags && d._tags[tag]).length;
-    if (count === 0 && cls === "postproc") return;
+
     const btn = document.createElement("span");
     btn.className = `tag-btn ${cls}`;
     btn.innerHTML = `<span class="tag-icon"></span>${TAG_LABELS[tag] || tag} (${count})`;
