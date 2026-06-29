@@ -58,6 +58,7 @@ powershell -ExecutionPolicy Bypass -File scripts\create_desktop_shortcut.ps1
 
 - **架構與設計決策** — [`CLAUDE.md`](CLAUDE.md)（含模組職責、擴展方式、已確立決策）
 - **待辦與藍圖** — [`TODO.md`](TODO.md)
+- **變更紀錄** — [`CHANGELOG.md`](CHANGELOG.md)
 
 ## 技術棧
 
