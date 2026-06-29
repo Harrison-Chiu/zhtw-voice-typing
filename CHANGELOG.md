@@ -4,6 +4,7 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-06-29
+- viewer 改版：三態標籤篩選（包含/排除/不篩選）、預設全顯示、搜尋目標切換、fetch+blob 音訊播放、`--serve` 一鍵啟動 (pending)
 - session log 系統：每段存 raw + processed + wav + config 快照，供離線實驗 (pending)
 - log 品質掃描工具 + HTML 檢視器：確定性標籤掃描模型/後處理問題 (pending)
 - 四引擎評測收尾：FW 整體最佳、維持預設，模型橫向比較告一段落 (62f6744)
