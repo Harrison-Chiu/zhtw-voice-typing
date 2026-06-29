@@ -50,15 +50,24 @@
   - 待補：幻覺 RMS 邏輯（streaming.py）需先抽成純函數才好測
 - [ ] docs/index.html 翻新 — 目前凍結在 v0.1（引擎寫 Qwen、結構樹缺串流/tray、roadmap 把已完成的當未來）。等正式規劃「後續改善」時連同 roadmap 一次重寫
 - [ ] Web UI 測試介面 — 瀏覽器介面，用於測試/展示/設定調整
-- [ ] 多引擎擴充 — SenseVoice 等其他引擎
-  - [x] whisper-turbo zh-TW 微調評測（4a）→ **不採用**。原生繁體+全形標點，但出現大量單字重複、專有名詞錯更多、漏併段；對照非同條件（候選走 transformers 30s 分塊/experimental、baseline 走 VAD），重複部分與分塊方式有關。baseline+VAD 更穩，候選優勢（全形標點）後處理已補足。腳本 `scripts/test_hf_whisper_zhtw.py`
-  - [x] Fun-ASR-Nano 評測（4b）→ **暫不採用（版本卡關）**。隔離環境 `.venv-funasr`（py3.11）裝 funasr 一次成功（避開 conda py3.13 的 llvmlite 地獄）；但 `pip install funasr`(1.3.14) 載入 Fun-ASR-Nano-2512 缺 ctc_decoder 權重 → 輸出退化成單字重複垃圾。研判 funasr 版本對不上。重試方向：依 FunAudioLLM 官方 GitHub requirements 裝指定版本。腳本 `scripts/test_funasr_nano.py`
-  - [ ] **系統化模型評測（下階段執行）**：
-    - **目前只測過一個 8 分鐘長檔**（`data/test_audio/簡報日.m4a`），**零短句測試**。但日常用途是短語音輸入，短句穩定度才是關鍵指標 → 重測務必含一組 3–10s 短句（可用 `experiments/extract_test_segments.py` 從現有音檔切）。
-    - 4a 對照非同條件：baseline 走 VAD 切段、候選走 transformers 固定 30s 分塊（experimental），候選的重複現象部分來自分塊方式。要單獨判斷模型品質，須讓候選走相同的 VAD 路徑再比。
-    - **4b 從未測到真實品質**：是「裝錯 funasr 版本」的 packaging 失敗，不是模型判決。模型真實辨識力仍未知。
-    - **Qwen3-ASR 完全沒測**：但已整合，`config.yaml` 切 `asr.engine: qwen` 即可當非 Whisper 備援（限制：context 無法引導繁簡，仍靠 OpenCC 後處理，見 CLAUDE.md 設計決策）。
-    - **重測規格**：受測 = faster-whisper(基準) / Qwen3-ASR / Fun-ASR-Nano(對版後)（SenseVoice 視時間加碼）；逐項記「原始輸出 + 後處理輸出 + 逐段對齊 + 耗時 + 指標(簡體殘留/全形標點率/重複偵測)」；輸出成 `experiments/results/` 結構化報告 + HTML viewer，讓人能逐段看「輸入長怎樣 → 哪個模型吐了什麼」。
-- [ ] **環境修：numpy 2.5 vs numba 衝突** — `-U transformers` 把 numpy 升到 2.5，numba 要 ≤2.4 → librosa 解碼掛掉（`scripts/test_audio_file.py` 受影響；麥克風 app 走 sounddevice 不受影響）。需固定 numpy<2.5 或在 file-decode 改用 ffmpeg。`uv sync` 可還原但會動到 transformers
+- [x] 多引擎橫向評測 — **2026-06-29 完成，結論：FW 整體最佳、維持預設，模型橫向比較告一段落**。四引擎都跑通、原始輸出存 `experiments/results/*2026-06-29*`，詳細結論見 CLAUDE.md「四引擎評測總結」與「繁體引導能力排名」。
+  - [x] whisper-zh-TW 微調（4a）→ **不採用**：短句品質≈baseline，但易掉標點、且 27.7s 單段也會崩潰成「量量量」重複。淘汰理由＝無增益+崩潰風險。腳本 `scripts/test_hf_whisper_zhtw.py`、`experiments/run_4a_segments.py`
+  - [x] Qwen3-ASR → **不採用（保留為備援）**：短句品質好、原生全形標點，但原生簡體需 OpenCC。已整合，`config.yaml` 切 `asr.engine: qwen` 可用。context 繁體引導有界（措辭/內容相依），見 CLAUDE.md。
+  - [x] Fun-ASR-Nano（4b）→ **翻案、可用但不採用**：先前「版本卡關」是誤判，真因 HF 快照缺 model.py，用 `remote_code=` 指向官方 repo model.py 即跑通、輸出乾淨。原生簡體需 OpenCC，相對 baseline 無增益。腳本 `scripts/test_funasr_nano_v2.py`
+  - [ ] （可選·低優先）Fun-ASR 繁體鷹架 02/04 補測 — 已證實把 model.py `get_prompt` 簡體鷹架換繁體能降抗拒段簡體率（seg01 0.296→0.074），但樣本僅 1 段顯著。要寫成設計決策需 `02_技術描述_開發平台.wav`/`04_長段連續描述.wav` 補測再現。腳本 `experiments/probe_funasr_scaffold.py`
+  - [ ] （可選）SenseVoice 等其他引擎 — 模型橫向比較已告段落，除非有明確新需求否則暫緩
+- [x] **環境：numpy vs numba 衝突已解** — 現況 numpy 2.4.6（符合 numba ≤2.4 需求），`scripts/test_audio_file.py` 路徑可跑；評測腳本一律改用 ffmpeg 解碼（不依賴 librosa），見 `experiments/*2026_06_29*`。
+
+### FW 深化 / 系統底層研究（模型不換，改往「把 FW 做得更好」）
+> 背景：四引擎比較後確認 FW 是最佳基底，後續改善聚焦在 FW 與系統管線，而非換模型。以下為「之後想做時可取用」的候選方向，未排程。
+- [ ] FW 解碼參數調校 — `beam_size`、`temperature`/fallback、`compression_ratio_threshold`、`no_repeat_ngram_size` 等對「重複/幻覺/漏字」的影響（目前幻覺靠 streaming.py 後段 fallback，未從解碼參數源頭調）
+- [ ] FW 微調可行性評估 — 用台灣口音/領域語料對 large-v3-turbo 做 LoRA/全量微調 → 但需轉 CT2 才能進現有 CTranslate2 路徑，且 4a 經驗顯示微調易引入重複退化，先評估成本/風險再決定
+- [ ] hotwords/initial_prompt 與後處理的分工再研究 — 哪些錯誤該在模型層（hotwords）修、哪些留給詞表，避免兩邊重工（接「聲學辨識錯誤」「標點符號進階研究」兩條）
+- [ ] 系統底層：VAD 切段品質 — seg05 類「講者猶豫/贅字多」段落各引擎都不穩，研究切段點與重疊對長段連續描述的影響
+
+### 本階段產出整理評估（2026-06-29，先記錄不動手）
+> 評估結論：**本階段無原始碼變更、無須還原**。新增的全是 `experiments/` 一次性腳本 + `experiments/results/` JSON，符合專案結構規範（根目錄不放 .py），屬實驗存證，建議保留。
+- [ ] （可選·輕量）整理 experiments/ 重複腳本 — 本輪新增 8 支腳本，其中 `eval_models_2026_06_29.py`+`eval_qwen_short.py` 為同一評測拆兩段（長檔卡 GPU 才分）、`steer_qwen_traditional.py`+`steer_qwen_variants.py` 同方向。可保留（各有獨立結果 JSON 對應）或合併歸檔，非必要。`experiments/results/eval_2026-06-29.log` 是 stdout log，內容已被同名 JSON 涵蓋，可刪。
+- [ ] （提醒）commit 前確認沒夾帶模型權重/音檔；`.venv-funasr` 與 scratchpad 的 Fun-ASR repo clone 在 repo 外，不受影響
 - [x] 桌面捷徑啟動（免打指令）— `scripts/start_tray.vbs`（隱藏視窗）+ `start_tray.bat`（排錯用、有視窗）+ `create_desktop_shortcut.ps1`（建桌面捷徑，需使用者自行在終端跑：MSIX 沙箱下由 Claude 代建的捷徑落不到真實桌面）。vbs 刻意用 python.exe+隱藏視窗而非 pythonw（pythonw 下 sys.stdout 為 None，tray 的 print 會崩）
 - [ ] 自動安裝/打包 — exe 或 installer（獨立 .exe，不依賴 .venv/Python；輕量桌面捷徑已先行，見上）
