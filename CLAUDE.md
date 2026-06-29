@@ -15,6 +15,7 @@ uv run python scripts/test_audio_file.py  # 用音檔測試（不需要麥克風
 uv run ruff check src/               # lint 檢查
 uv run ruff format src/              # 格式化
 uv run pytest                        # 跑單元測試（processing/，毫秒級不碰硬體）
+uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟動 HTTP server
 ```
 
 注意：首次 `import torch` 需要 30-60 秒載入 CUDA，這是正常的。
