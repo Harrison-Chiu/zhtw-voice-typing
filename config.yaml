@@ -51,6 +51,9 @@ streaming:
   fallback_rms_target: 0.05         # 幻覺 fallback 第一步：RMS 正規化目標值（正常語音 ~0.03-0.1）
   verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
+logging:
+  save_audio: true   # 儲存每段音訊 .wav + metadata，供離線實驗用
+
 hotkey:
   combination: "ctrl+shift+space"   # 全域錄音切換快捷鍵
 

@@ -88,12 +88,8 @@ def main() -> None:
         speech_pad_ms=vad_cfg.get("speech_pad_ms", 100),
         max_segment_sec=streaming_cfg.get("max_segment_sec", 30.0),
         min_energy=streaming_cfg.get("min_energy", 0.005),
-        hallucination_threshold_sec=streaming_cfg.get(
-            "hallucination_threshold_sec", 1.5
-        ),
-        min_hallucination_audio_sec=streaming_cfg.get(
-            "min_hallucination_audio_sec", 3.0
-        ),
+        hallucination_threshold_sec=streaming_cfg.get("hallucination_threshold_sec", 1.5),
+        min_hallucination_audio_sec=streaming_cfg.get("min_hallucination_audio_sec", 3.0),
         fallback_silence_ms=streaming_cfg.get("fallback_silence_ms", [500, 300]),
         fallback_rms_target=streaming_cfg.get("fallback_rms_target", 0.05),
         verbose=streaming_cfg.get("verbose", False),
@@ -137,15 +133,9 @@ def main() -> None:
             "audio_sec_median": round(float(np.median(audio_durations)), 2)
             if audio_durations
             else 0,
-            "transcribe_sec_min": round(min(transcribe_times), 2)
-            if transcribe_times
-            else 0,
-            "transcribe_sec_max": round(max(transcribe_times), 2)
-            if transcribe_times
-            else 0,
-            "transcribe_sec_avg": round(np.mean(transcribe_times), 2)
-            if transcribe_times
-            else 0,
+            "transcribe_sec_min": round(min(transcribe_times), 2) if transcribe_times else 0,
+            "transcribe_sec_max": round(max(transcribe_times), 2) if transcribe_times else 0,
+            "transcribe_sec_avg": round(np.mean(transcribe_times), 2) if transcribe_times else 0,
             "realtime_factor": round(audio_sec / total_time, 1) if total_time > 0 else 0,
         },
         "segments": [{"index": i + 1, **s} for i, s in enumerate(stats)],

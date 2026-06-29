@@ -16,6 +16,7 @@ from asr_input.asr import build_engine
 from asr_input.config import load_config
 from asr_input.main import build_pipeline
 from asr_input.output.clipboard import ClipboardOutput
+from asr_input.output.session_log import SessionLogger
 from asr_input.output.transcript_log import log_transcript
 from asr_input.streaming import StreamingSession
 
@@ -73,9 +74,11 @@ def _parse_hotkey(combo: str) -> set:
     return keys
 
 
-def _make_icon(color: str, count: int | None = None) -> Image.Image:
+def _make_icon(color: str, count: int | None = None, finishing: bool = False) -> Image.Image:
     img = Image.new("RGBA", (64, 64))
     draw = ImageDraw.Draw(img)
+    if finishing:
+        draw.ellipse((0, 0, 63, 63), outline="white", width=4)
     draw.ellipse((4, 4, 60, 60), fill=color)
     if count is not None:
         text = str(count)
@@ -140,6 +143,7 @@ class TrayApp:
         self._vad_model: torch.jit.ScriptModule | None = None
         self._session: StreamingSession | None = None
         self._tray: pystray.Icon | None = None
+        self._finishing = False
 
     def run(self) -> None:
         menu = pystray.Menu(
@@ -270,6 +274,16 @@ class TrayApp:
         vad_cfg = self._config.get("vad", {})
         streaming_cfg = self._config.get("streaming", {})
 
+        logging_cfg = self._config.get("logging", {})
+        save_audio = logging_cfg.get("save_audio", True)
+        logger = SessionLogger(
+            sample_rate=self._sample_rate,
+            enabled=save_audio,
+            config_snapshot=self._config if save_audio else None,
+        )
+        if save_audio and logger.session_dir:
+            print(f"  [log] {logger.session_dir}", flush=True)
+
         self._session = StreamingSession(
             engine=self._engine,
             pipeline=self._pipeline,
@@ -291,6 +305,7 @@ class TrayApp:
             on_partial=self._on_partial_result,
             on_transcribing=self._on_transcribing,
             verbose=self._verbose,
+            session_logger=logger,
         )
         self._session.start()
         self._set_state(State.STREAMING)
@@ -298,12 +313,23 @@ class TrayApp:
 
     def _stop_streaming(self) -> None:
         if self._session is None:
+            self._finishing = False
             self._set_state(State.IDLE)
             return
+
+        self._finishing = True
+        if self._tray:
+            seg_count = self._session.segment_count if self._session else 0
+            self._tray.icon = _make_icon(
+                COLORS[State.TRANSCRIBING], count=seg_count, finishing=True
+            )
+            self._tray.title = "ASR — 收尾中..."
 
         full_text = self._session.stop()
         segment_count = self._session.segment_count
         self._session = None
+
+        self._finishing = False
 
         if not full_text.strip():
             print("（沒有辨識到文字）", flush=True)
@@ -321,16 +347,22 @@ class TrayApp:
         """Called when a segment starts being transcribed — flash amber."""
         if self._tray:
             seg_count = self._session.segment_count if self._session else 0
-            self._tray.icon = _make_icon(COLORS[State.TRANSCRIBING], count=seg_count)
-            self._tray.title = f"ASR — 辨識 {audio_sec:.0f}s 音訊中..."
+            self._tray.icon = _make_icon(
+                COLORS[State.TRANSCRIBING], count=seg_count, finishing=self._finishing
+            )
+            suffix = "（收尾）" if self._finishing else ""
+            self._tray.title = f"ASR — 辨識 {audio_sec:.0f}s 音訊中...{suffix}"
 
     def _on_partial_result(self, latest_segment: str, accumulated: str) -> None:
         """Called from worker thread when a segment is transcribed."""
         if self._tray:
             seg_count = self._session.segment_count if self._session else 0
             char_count = len(accumulated)
-            self._tray.icon = _make_icon(COLORS[State.STREAMING], count=seg_count)
-            self._tray.title = f"ASR — {seg_count}段 {char_count}字 | {latest_segment[:50]}"
+            self._tray.icon = _make_icon(
+                COLORS[State.STREAMING], count=seg_count, finishing=self._finishing
+            )
+            suffix = "（收尾）" if self._finishing else ""
+            self._tray.title = f"ASR — {seg_count}段 {char_count}字{suffix} | {latest_segment[:50]}"
 
     def _set_state(self, state: State) -> None:
         self._state = state

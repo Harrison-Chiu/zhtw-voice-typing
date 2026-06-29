@@ -100,9 +100,13 @@ uv run pytest                        # 跑單元測試（processing/，毫秒級
 - `src/asr_input/audio/capture.py` — `AudioSource` 抽象介面 + `MicrophoneCapture` 實作
 - `src/asr_input/audio/streaming_vad.py` — `StreamingVAD`：即時逐 chunk 餵入 Silero VAD，靜音觸發切句
 - `src/asr_input/output/clipboard.py` — 剪貼簿輸出
-- `config.yaml` — 使用者設定（模型、裝置、語言、後處理選項、串流參數）
+- `src/asr_input/output/session_log.py` — 每段存 raw + processed + wav + config 快照（供離線實驗）
+- `config.yaml` — 使用者設定（模型、裝置、語言、後處理選項、串流參數、logging）
 - `data/tw_dict.yaml` — 台灣用語替換詞表
+- `data/logs/sessions/` — session log 輸出目錄（.gitignore 已排除）
 - `docs/index.html` — 互動式專案文件頁面
+- `scripts/search_logs.py` — log 品質掃描：確定性標籤（半形標點、簡體、空格、重複…）篩選有問題的段
+- `scripts/build_log_viewer.py` — 產生 `data/logs/viewer.html` 互動檢視器（標籤篩選 + 音訊播放）
 - `scripts/` — 手動執行的開發/測試腳本（`test_audio_file.py`、`test_streaming.py`、`transcribe_file.py`）
 - `experiments/` — 一次性實驗腳本，結果在 `experiments/results/`
 

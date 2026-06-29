@@ -16,6 +16,7 @@ import torch
 
 from asr_input.asr.base import ASREngine
 from asr_input.audio.streaming_vad import StreamingVAD
+from asr_input.output.session_log import SessionLogger
 from asr_input.processing.pipeline import ProcessingPipeline
 
 
@@ -44,6 +45,7 @@ class StreamingSession:
         on_partial: Callable[[str, str], None] | None = None,
         on_transcribing: Callable[[float], None] | None = None,
         verbose: bool = False,
+        session_logger: SessionLogger | None = None,
     ) -> None:
         self._engine = engine
         self._pipeline = pipeline
@@ -59,6 +61,7 @@ class StreamingSession:
         self._on_partial = on_partial
         self._on_transcribing = on_transcribing
         self._verbose = verbose
+        self._logger = session_logger
         self._session_start: float = 0
 
         self._segments: list[str] = []
@@ -322,6 +325,16 @@ class StreamingSession:
                             }
                         )
 
+                        if self._logger:
+                            self._logger.log_fallback_segment(
+                                original_audio=segment_audio,
+                                original_raw=raw_text,
+                                original_dt=dt,
+                                audio_sec=audio_sec,
+                                rms=rms,
+                                sub_segments=sub_stats,
+                            )
+
                         seg_num = len(self._segments)
                         combined = "".join(s["processed"] for s in sub_stats if s["processed"])
                         print(
@@ -346,6 +359,16 @@ class StreamingSession:
                         "empty": True,
                     }
                 )
+                if self._logger:
+                    self._logger.log_segment(
+                        audio=segment_audio,
+                        raw_text="",
+                        processed_text="",
+                        audio_sec=audio_sec,
+                        transcribe_sec=dt,
+                        rms=rms,
+                        extra={"empty": True},
+                    )
                 continue
 
             processed = self._pipeline.run(raw_text)
@@ -362,6 +385,16 @@ class StreamingSession:
                     "empty": False,
                 }
             )
+
+            if self._logger:
+                self._logger.log_segment(
+                    audio=segment_audio,
+                    raw_text=raw_text,
+                    processed_text=processed,
+                    audio_sec=audio_sec,
+                    transcribe_sec=dt,
+                    rms=rms,
+                )
 
             seg_num = len(self._segments)
             print(

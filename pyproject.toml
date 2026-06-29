@@ -29,6 +29,7 @@ packages = ["src/asr_input"]
 target-version = "py312"
 line-length = 100
 src = ["src"]
+extend-exclude = ["scripts/build_log_viewer.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

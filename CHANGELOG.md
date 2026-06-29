@@ -4,6 +4,8 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-06-29
+- session log 系統：每段存 raw + processed + wav + config 快照，供離線實驗 (pending)
+- log 品質掃描工具 + HTML 檢視器：確定性標籤掃描模型/後處理問題 (pending)
 - 四引擎評測收尾：FW 整體最佳、維持預設，模型橫向比較告一段落 (62f6744)
 - 桌面捷徑啟動 tray，免打指令（含有視窗排錯版 + README）(3bef354)
 
