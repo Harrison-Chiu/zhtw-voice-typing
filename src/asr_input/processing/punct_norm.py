@@ -26,6 +26,12 @@ _HALF_TO_FULL = {
 # 故另開一道 re 前處理。半形句號 "." 不在 _HALF_TO_FULL（避免誤傷小數點），不衝突。
 _ELLIPSIS_RUN = re.compile(r"\.{3,}")
 
+# CJK 字 + 一個空格 + CJK 字：模型把逗號輸出成空格（常見於語氣詞後，如「呃 我」「好 那」）
+_CJK_SPACE_CJK = re.compile(
+    r"(?<=[一-鿿㐀-䶿豈-﫿\U00020000-\U0002a6df]) "
+    r"(?=[一-鿿㐀-䶿豈-﫿\U00020000-\U0002a6df])"
+)
+
 
 def _is_cjk(ch: str) -> bool:
     return bool(_CJK_RANGE.match(ch))
@@ -48,6 +54,7 @@ class PunctuationNormalizer(TextProcessor):
             return text
 
         text = _convert_ellipsis(text)
+        text = _CJK_SPACE_CJK.sub("，", text)
         chars = list(text)
         result = []
 

@@ -79,6 +79,26 @@ def test_ellipsis_conversion(normalizer, text, expected):
     assert normalizer.process(text) == expected
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("呃 我講一下", "呃，我講一下"),
+        ("好 那就開始", "好，那就開始"),
+        ("對 然後現在有", "對，然後現在有"),
+        ("嗯 沒關係 不用 你先", "嗯，沒關係，不用，你先"),
+        # 多個空格不轉（不是逗號替代）
+        ("呃  我講一下", "呃  我講一下"),
+        # ASCII 間空格不轉
+        ("hello world", "hello world"),
+        # CJK-ASCII 邊界不轉
+        ("你好 world", "你好 world"),
+        ("hello 世界", "hello 世界"),
+    ],
+)
+def test_cjk_space_to_comma(normalizer, text, expected):
+    assert normalizer.process(text) == expected
+
+
 @pytest.mark.parametrize("text", ["", "你好", "hello", ","])
 def test_edge_cases_no_crash(normalizer, text):
     # lone punctuation with no neighbours stays half-width; empty/plain text unchanged
