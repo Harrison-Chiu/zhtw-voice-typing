@@ -7,6 +7,8 @@
 - 後處理改善：CJK 間空格→逗號（8% 段受惠）、ASR 同音詞修正（辦形→半形、轉入→轉錄、以有→已有）(94a9809)
 - 實驗：prompt/decode 參數對逗號無效（5 組參數×7 段，逗號密度完全不變）；FW 內建品質門檻從未觸發（門檻太鬆）；8 分鐘測試音檔零幻覺（VAD 改善已從源頭消除）
 - 實驗：logit manipulation 逗號研究（018ba24）— logit probe 診斷根因（逗號 rank=2 佔 9.1%、gap 極小）→ 固定規則 boost 天花板 51% 改善 @ 22% 副作用 → Bayesian decision + bigram prior 改善效率比但不改天花板 → 結論：模型層 logit 操作有根本上限，需外部標點模型
+- 實驗：MCTS-lite 逗號搜索（pending）— Phase 0 診斷：45 個 near-miss 位置逗號路徑 log-prob 全部劣於 winner（0/45），模型 probability landscape 裡逗號就是 inferior path。Phase 1：外部標點獎勵可強制改善（9/9 問題段），但本質同 logit boost、副作用同等級（正常段 30-40% 內容變化）。結論：純搜索策略（MCTS/MCMC/best-of-N）對此問題理論上無效
+- 問題段判定修正：原 23.5%（35/149, cjk>20）灌水嚴重 → 嚴格篩選（cjk>40 + 無任何標點）後為 9/149（6%），14 段邊界案例多數有句號/問號已足夠分句
 
 ## 2026-06-29
 - viewer 改版：三態標籤篩選（包含/排除/不篩選）、預設全顯示、搜尋目標切換、fetch+blob 音訊播放、`--serve` 一鍵啟動 (pending)
