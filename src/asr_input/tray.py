@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 import signal
+import sys
 import threading
 import time
 
@@ -382,7 +383,45 @@ class TrayApp:
         icon.stop()
 
 
+def _optout_ecoqos() -> None:
+    """退出 Win11 EcoQoS（效率模式），避免背景行程被節流。
+
+    從 start_tray.vbs 以隱藏視窗（WindowStyle 0、無前景視窗）啟動時，Win11 會把
+    本行程判為背景並套 EcoQoS，把驅動 CUDA 的 CPU 執行緒趕到 E-core / 降頻。
+    實測 faster-whisper 解碼中位數從 ~0.46s 惡化到 ~1.1s 且抖動大；opt-out 後恢復
+    全速且變異幾乎消失。前景（終端）啟動時本呼叫無害。僅 Windows 有效。
+    """
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes as wt
+
+    class _PowerThrottlingState(ctypes.Structure):
+        _fields_ = [
+            ("Version", wt.DWORD),
+            ("ControlMask", wt.DWORD),
+            ("StateMask", wt.DWORD),
+        ]
+
+    PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 0x1
+    ProcessPowerThrottling = 4  # PROCESS_INFORMATION_CLASS
+    try:
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.SetProcessInformation.argtypes = [wt.HANDLE, ctypes.c_int, ctypes.c_void_p, wt.DWORD]
+        # ControlMask 選 EXECUTION_SPEED、StateMask=0 → 明確關閉該項節流
+        state = _PowerThrottlingState(1, PROCESS_POWER_THROTTLING_EXECUTION_SPEED, 0)
+        k32.SetProcessInformation(
+            k32.GetCurrentProcess(),
+            ProcessPowerThrottling,
+            ctypes.byref(state),
+            ctypes.sizeof(state),
+        )
+    except OSError:
+        pass  # 舊版 Windows 無此 API，忽略
+
+
 def main() -> None:
+    _optout_ecoqos()
     app = TrayApp()
     app.run()
 

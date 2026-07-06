@@ -3,6 +3,9 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-07-07
+- fix(tray)：啟動時退出 Win11 EcoQoS（`SetProcessInformation` ProcessPowerThrottling）(pending)。start_tray.vbs 隱藏視窗啟動被 Win11 判為背景並節流，實測 faster-whisper 解碼中位數 ~1.1s（抖 0.7–1.4s）→ opt-out 後 ~0.46s（快 2.4 倍、變異幾乎歸零）。`timeBeginPeriod(1)` 實測無效已排除；單執行緒 CPU 探針測不到（節流打的是驅動 GPU 的多執行緒）
+
 ## 2026-07-01
 - 後處理改善：CJK 間空格→逗號（8% 段受惠）、ASR 同音詞修正（辦形→半形、轉入→轉錄、以有→已有）(94a9809)
 - 實驗：prompt/decode 參數對逗號無效（5 組參數×7 段，逗號密度完全不變）；FW 內建品質門檻從未觸發（門檻太鬆）；8 分鐘測試音檔零幻覺（VAD 改善已從源頭消除）
