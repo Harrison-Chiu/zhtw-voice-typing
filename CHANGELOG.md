@@ -3,6 +3,15 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-08-02
+- Whisper 後端初測：加入可重跑的 sequential／batched／HF SDPA benchmark；RTX 4060 上 batched 對 10–13 秒短句僅快約 5–7%，長檔吞吐雖快約 2.4 倍但發生漏段與重複，不改 production 預設 (1ad5542)
+- 評測規劃：新增標準 benchmark 提案，定義分層資料集、雙 gold transcript、CER/MER、效能規範、採用 gate 與視覺報告 (1ad5542)
+- 底層研究：整理 Faster Whisper／CTranslate2 可修改層級、候選技術 backlog 與先上層調度後底層 runtime 的實施順序 (fafe472)
+
+## 2026-07-31
+- 後處理：依既有語音 log 加入「外餐→外參」單詞修正；「表點」仍採完整詞組規則，避免誤傷報表點選等正常用法；15 筆既有錯誤語境全數涵蓋 (c78217d)
+- 實驗工具：新增音訊 codec 嚴格逐字回歸與錄音／模型並行載入探針；首輪確認 Faster Whisper temperature fallback 會讓疑難 WAV 本身不具完全決定性，完整 codec 結論留待基準問題處理後再跑 (fdbd650)
+
 ## 2026-07-07
 - fix(tray)：啟動時退出 Win11 EcoQoS（`SetProcessInformation` ProcessPowerThrottling）(pending)。start_tray.vbs 隱藏視窗啟動被 Win11 判為背景並節流，實測 faster-whisper 解碼中位數 ~1.1s（抖 0.7–1.4s）→ opt-out 後 ~0.46s（快 2.4 倍、變異幾乎歸零）。`timeBeginPeriod(1)` 實測無效已排除；單執行緒 CPU 探針測不到（節流打的是驅動 GPU 的多執行緒）
 
