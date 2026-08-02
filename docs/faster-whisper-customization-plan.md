@@ -96,7 +96,7 @@ dependency revision 與 patch 說明，不直接複製整包 source。
 |---:|---|---|---|---|
 | P0 | 解碼參數矩陣 | 降幻覺/重複、可能降延遲 | 漏字或不可重現 | CER、deletion、determinism、P95 |
 | P0 | VAD 片段 dynamic batching | 離線吞吐提高 | 等待時間、漏段 | 短句 latency 與長檔 completeness |
-| P0 | 詞彙規則改成上下文安全 | 避免正常中文誤傷 | 規則覆蓋不足 | glossary recall + false positive |
+| P0 | 個人詞彙規則回歸 | 保持已確認修正、監測未來誤傷 | 規則覆蓋不足 | glossary recall + false positive |
 | P1 | int8_float16 / compute type | 降 VRAM、可能加速 | 品質或 kernel 差異 | CER、P95、VRAM |
 | P1 | length bucketing | batch 效率提高 | scheduler 複雜度 | throughput、queue delay |
 | P1 | prompt/hotword ablation | 專有詞、繁體與標點 | prompt 污染/重複 | glossary、CER、崩潰率 |
@@ -122,4 +122,3 @@ dependency revision 與 patch 說明，不直接複製整包 source。
 - 參數實驗：baseline 加 8–12 組有理據的解碼設定，不做無界 grid search。
 - Dynamic batching prototype：單句立即解碼，離線片段 batch 1/2/4，自動降級避免 OOM。
 - 決策報告：品質–延遲–VRAM Pareto、逐段 regression、採用或不採用理由。
-

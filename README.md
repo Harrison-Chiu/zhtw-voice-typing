@@ -57,7 +57,11 @@ powershell -ExecutionPolicy Bypass -File scripts\create_desktop_shortcut.ps1
 ## 更多文件
 
 - **架構與設計決策** — [`CLAUDE.md`](CLAUDE.md)（含模組職責、擴展方式、已確立決策）
-- **待辦與藍圖** — [`TODO.md`](TODO.md)
+- **主路線圖（SSOT）** — [`docs/roadmap.md`](docs/roadmap.md)
+- **近期執行入口** — [`TODO.md`](TODO.md)
+- **標準 Benchmark** — [`docs/asr-benchmark-proposal.md`](docs/asr-benchmark-proposal.md)
+- **Faster Whisper／CT2 計畫** — [`docs/faster-whisper-customization-plan.md`](docs/faster-whisper-customization-plan.md)
+- **VAD E0–E6 實驗** — [`docs/vad-experiment-plan.md`](docs/vad-experiment-plan.md)
 - **變更紀錄** — [`CHANGELOG.md`](CHANGELOG.md)
 
 ## 技術棧

@@ -32,7 +32,7 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 
 **B. 記錄更新**（repo 內檔案，會進同一個 commit；各檔職責見下方「文件職責分工」表）
 4. `CHANGELOG.md` — 這次完成的事各加一條（倒序、一行＋commit hash；hash 在 commit 後補，或先寫 `(pending)` 下次補）
-5. `TODO.md` — 移除/收掉已完成項（完成紀錄歸 CHANGELOG，不在此打勾留存）、補新待辦
+5. `docs/roadmap.md` — 更新路線狀態與跨線依賴；`TODO.md` 只維護近期執行入口
 6. `CLAUDE.md`：
    - 「已確立的設計決策」— 有實驗結論／決定不重做的做法
    - 「目前狀態」— 功能落地、版本推進
@@ -61,7 +61,8 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 | `CLAUDE.md`（本檔） | 架構與設計決策**正本** + 給 Claude 的工作慣例（含上方收尾流程） | — |
 | `docs/index.html` | 對外展示的完整互動版（**待翻新**，見 TODO） | — |
 | `CHANGELOG.md` | **完成紀錄**（倒序、一條一行＋commit hash 指向細節） | 待辦、實作細節長文 |
-| `TODO.md` | **待辦與藍圖**（只記未來要做的） | 已完成項（→CHANGELOG）、實作細節（→commit/CLAUDE.md） |
+| `docs/roadmap.md` | **主路線圖 SSOT**：方向、狀態、依賴、責任邊界與待決策 | 專題參數（→各規格）、已完成項（→CHANGELOG） |
+| `TODO.md` | **近期執行入口**：只連到 roadmap 與專題規格 | 第二份完整 backlog、專題參數 |
 | `.gitignore` | 「不該 commit 的清單」的**強制執行處** | — |
 
 **原則（正本位置）**：新增/修改文件前，先確認該資訊的「正本」在哪。已有正本就只改正本 + 他處放連結，**不要複製內容**。這是判斷型規範，靠遵守、無自動強制。
@@ -149,9 +150,10 @@ ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
 ## 目前狀態
 
 v0.3 — MVP 完成，進入後續改善階段。核心鏈路全數驗證通過：辨識／簡轉繁／台灣用語／串流辨識／VAD 切段／標點正規化／全域快捷鍵／轉錄 log／單元測試。
-功能細節見「架構」與「已確立的設計決策」；待辦與藍圖見 `TODO.md`。
+功能細節見「架構」與「已確立的設計決策」；主路線與待決策見
+`docs/roadmap.md`，近期執行入口見 `TODO.md`。
 
-**模型橫向比較告一段落（2026-06-29）**：四引擎（baseline FW / whisper-zh-TW / Qwen3-ASR / Fun-ASR-Nano）評測完成，結論 **FW 整體最佳、維持預設**（見上「四引擎評測總結」）。三個候選都跑通且原始輸出已存檔，但無一值得替換。下一步改善方向轉向「**把 FW 做得更好**」而非換模型——藍圖見 `TODO.md`。
+**模型橫向比較告一段落（2026-06-29）**：四引擎（baseline FW / whisper-zh-TW / Qwen3-ASR / Fun-ASR-Nano）評測完成，結論 **FW 整體最佳、維持預設**（見上「四引擎評測總結」）。三個候選都跑通且原始輸出已存檔，但無一值得替換。下一步改善方向轉向「**把 FW 做得更好**」而非換模型——路線見 `docs/roadmap.md`，底層細節見 `docs/faster-whisper-customization-plan.md`。
 
 ## 注意事項
 
