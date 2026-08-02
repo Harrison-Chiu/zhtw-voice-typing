@@ -32,6 +32,7 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
             initial_prompt=asr_cfg.get("initial_prompt", "繁體中文，台灣用語。"),
             hotwords=asr_cfg.get("hotwords"),
             beam_size=asr_cfg.get("beam_size", 5),
+            temperature=asr_cfg.get("temperature", [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
         )
 
     else:

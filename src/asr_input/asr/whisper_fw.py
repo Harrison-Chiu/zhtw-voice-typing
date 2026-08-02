@@ -21,6 +21,7 @@ class WhisperFWEngine(ASREngine):
         initial_prompt: str = "繁體中文，台灣用語。",
         hotwords: str | None = None,
         beam_size: int = 5,
+        temperature: float | list[float] | tuple[float, ...] = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
     ) -> None:
         self.model_id = model_id
         self.device = device
@@ -29,6 +30,7 @@ class WhisperFWEngine(ASREngine):
         self.initial_prompt = initial_prompt
         self.hotwords = hotwords
         self.beam_size = beam_size
+        self.temperature = temperature
         self._model = None
 
     def load(self) -> None:
@@ -48,6 +50,7 @@ class WhisperFWEngine(ASREngine):
             audio.astype(np.float32),
             language=self.language,
             beam_size=self.beam_size,
+            temperature=self.temperature,
             initial_prompt=self.initial_prompt or None,
             hotwords=self.hotwords or None,
         )

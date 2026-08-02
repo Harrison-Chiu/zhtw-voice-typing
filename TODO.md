@@ -7,7 +7,14 @@
 > 項目後的「背景：」標出已有成果，避免從零重做。
 
 ## 下一步（短期）
-- 〔探索〕FW 深化 — 從風險最低的「解碼參數調校」切入（細節見「引擎與底層研究」）。
+- 音訊 log 編碼嚴格交叉測試 — 120 段分層樣本，WAV/FLAC/Opus 16–64k/MP3
+  32–64k；每段 raw Faster Whisper 文字（含空格與標點）必須逐字一致。
+  背景：初測發現疑難段受 temperature fallback 抽樣影響，WAV 自身會漂；
+  強制 temperature=0 雖可重現，卻產生嚴重重複，需先解決基準決定性。
+- 〔探索〕VAD 對照實驗 — Silero JIT vs ONNX；Silero vs 自適應相對能量、
+  robust 統計、頻譜特徵與 WebRTC VAD 參考組。先用現有 log，之後補錄壓力片段。
+- 開機啟動／閒置卸載設計 — 預設啟動但不載模型；快捷鍵先錄音與 VAD，
+  模型背景載入，ready 後消化佇列；加入 30 分鐘 app-idle 卸載與 tray 設定。
 
 ## 藍圖
 
@@ -18,7 +25,10 @@
 - 已知未修正詞驗證 — 磁錶→詞表、代辦→待辦、清淡→清單、組→主、升學→聲學、表點→標點，需對應音檔才能驗證 hotwords 效果。
 
 ### 引擎與底層研究（模型不換，往「把 FW 做更好」）
-- 〔探索〕FW 解碼參數調校 — beam_size / temperature fallback / no_repeat_ngram_size 對重複/幻覺/漏字的影響。背景：目前幻覺只在 streaming 後段補救，未從解碼源頭調。
+- 〔探索〕FW 解碼參數調校 — beam_size / temperature fallback /
+  no_repeat_ngram_size 對重複、幻覺、漏字與可重現性的影響。背景：同一疑難 WAV
+  以 production fallback 重跑 10 次出現 7 種輸出；beam=1 仍會漂；
+  temperature=0 可 10/10 一致但退化成長串刪節號，不能直接採用。
 - 〔探索〕FW 微調可行性評估 — 台灣口音/領域語料 LoRA。背景：需轉 CT2 才進現有路徑，且 4a 微調出現重複退化（CHANGELOG 06-25、CLAUDE.md）→ 先評成本/風險。
 - 〔探索〕VAD 切段品質 — 講者猶豫/贅字多的難段各引擎都不穩。背景：自適應遞減切段已實作（CHANGELOG 06-17/18），本條是難段深化。
 - 〔探索·低優先〕Fun-ASR 繁體鷹架 02/04 補測 — 已證實改 get_prompt 簡體鷹架降抗拒段簡體率（seg01 0.296→0.074），樣本僅 1 段，需 02/04 再現才寫成設計決策。腳本 `experiments/probe_funasr_scaffold.py`。
@@ -35,6 +45,10 @@
 
 ### 工程 / 打包 / 文件
 - 自動安裝/打包 — 獨立 .exe，不依賴 .venv/Python（輕量桌面捷徑已先行）。
+- 發布版／開發版設定分離 — 發布版預設不存音訊或只留極小額度；開發版使用
+  lossless FLAC、2 GiB 上限；確認有損格式嚴格通過後才考慮取代。
+- 自動測試補強 — streaming 佇列、模型 ready gate、閒置卸載狀態機、log
+  容量輪替與 tray 設定。
 - 補測 streaming.py 幻覺 RMS 邏輯 — 需先抽成純函數才好測（目前 pytest 只覆蓋 processing/）。
 - docs/index.html 翻新 — 凍結在 v0.1（引擎寫 Qwen、結構樹缺串流/tray、roadmap 過時）。
 - 〔點子〕Web UI 測試介面 — 瀏覽器介面，用於測試/展示/設定調整。
