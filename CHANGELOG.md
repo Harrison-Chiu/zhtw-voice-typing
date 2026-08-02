@@ -4,6 +4,7 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-08-02
+- 計畫治理：建立 A–F 主路線圖作為 SSOT，TODO 降為執行入口；補齊 VAD E0–E6 正式規格、non-inferiority gate 與 A/B/C、D/E 平行開發邊界 (1334b7a)
 - Whisper 後端初測：加入可重跑的 sequential／batched／HF SDPA benchmark；RTX 4060 上 batched 對 10–13 秒短句僅快約 5–7%，長檔吞吐雖快約 2.4 倍但發生漏段與重複，不改 production 預設 (1ad5542)
 - 評測規劃：新增標準 benchmark 提案，定義分層資料集、雙 gold transcript、CER/MER、效能規範、採用 gate 與視覺報告 (1ad5542)
 - 底層研究：整理 Faster Whisper／CTranslate2 可修改層級、候選技術 backlog 與先上層調度後底層 runtime 的實施順序 (fafe472)
