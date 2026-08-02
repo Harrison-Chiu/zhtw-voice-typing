@@ -46,6 +46,20 @@ def test_empty_dict_is_noop(replacer_from):
     assert r.process("任何文字") == "任何文字"
 
 
+def test_asr_corrections_use_global_external_parameter_and_phrase_only_punctuation():
+    r = TaiwanTermReplacer()
+
+    assert r.process("手動外餐的計算") == "手動外參的計算"
+    assert r.process("工廠提供的外餐資訊") == "工廠提供的外參資訊"
+    assert r.process("外餐") == "外參"
+    assert r.process("這個手動表點的技術") == "這個手動標點的技術"
+    assert r.process("空間的坐表點的位置") == "空間的座標點的位置"
+
+    # 外餐是明確的個人詞彙取捨；表點仍避免跨詞界誤傷。
+    assert r.process("戶外餐廳與報表點選") == "戶外參廳與報表點選"
+    assert r.process("表點") == "表點"
+
+
 @pytest.mark.parametrize(
     ("term", "replacement"),
     [
