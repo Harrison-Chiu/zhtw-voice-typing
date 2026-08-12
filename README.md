@@ -32,7 +32,8 @@ uv sync          # 自動建立虛擬環境並安裝依賴
 ## 使用
 
 ```bash
-uv run python -m asr_input.tray   # System Tray 版（全域快捷鍵，日常推薦）
+uv run python -m asr_input.tray   # System Tray 版（主動啟動，背景預載 Whisper）
+uv run python -m asr_input.tray --startup-mode autostart  # 未來開機啟動用，首次錄音才載模型
 uv run python -m asr_input.main   # CLI 版（終端機互動）
 ```
 

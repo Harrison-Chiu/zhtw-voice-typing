@@ -43,4 +43,4 @@ New-AsrShortcut 'ASR Input (視窗).lnk' $bat $null `
     'ASR 語音輸入（有視窗、看得到 log）— 關視窗即結束'
 
 Write-Host "完成。日常用「ASR Input」，想看 log 用「ASR Input (視窗)」。"
-Write-Host "首次啟動仍需 ~30s 載入模型，系統匣圖示轉綠後可用。"
+Write-Host "啟動後系統匣圖示會先出現；CPU VAD 就緒即可錄音，Whisper 同時在背景預載。"
