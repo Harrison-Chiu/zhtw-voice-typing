@@ -1,5 +1,6 @@
 """Lightweight tray bootstrap behavior."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -24,6 +25,12 @@ class FakeListener:
 
     def stop(self) -> None:
         self.stopped = True
+
+
+def test_silent_launcher_remains_ascii_for_windows_script_host():
+    launcher = Path(__file__).resolve().parents[1] / "scripts" / "start_tray.vbs"
+
+    assert launcher.read_bytes().isascii()
 
 
 def test_tray_becomes_visible_before_heavy_setup(monkeypatch):

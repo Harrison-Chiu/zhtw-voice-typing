@@ -1,4 +1,6 @@
 ' Silent launcher for ASR Input tray - double-click to start, no console window.
+' Keep this file ASCII-only: Windows Script Host may parse UTF-8 without a BOM
+' as an ANSI code page and report misleading unterminated-string errors.
 '
 ' Uses python.exe (not pythonw.exe) with hidden window style (0):
 ' tray.py uses print(); under pythonw sys.stdout is None and print() crashes.
@@ -6,6 +8,8 @@
 ' window stays hidden. For troubleshooting use start_tray.bat (visible window).
 
 Set fso = CreateObject("Scripting.FileSystemObject")
+If WScript.Arguments.Named.Exists("check") Then WScript.Quit 0
+
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 repoDir = fso.GetParentFolderName(scriptDir)
 pyExe = repoDir & "\.venv\Scripts\python.exe"
@@ -13,9 +17,9 @@ logDir = repoDir & "\data\logs"
 logFile = logDir & "\launcher.log"
 
 If Not fso.FileExists(pyExe) Then
-    MsgBox "找不到 ASR Input 的 Python：" & pyExe & vbCrLf & _
-        "請先完成安裝，或使用 ASR Input (視窗) 捷徑排錯。", _
-        vbCritical, "ASR Input 啟動失敗"
+    MsgBox "ASR Input Python was not found:" & vbCrLf & pyExe & vbCrLf & _
+        "Complete setup first, or use the windowed shortcut for diagnostics.", _
+        vbCritical, "ASR Input startup failed"
     WScript.Quit 2
 End If
 
@@ -40,6 +44,6 @@ command = "%ComSpec% /d /s /c """"" & pyExe & """ -m asr_input.tray --startup-mo
 exitCode = sh.Run(sh.ExpandEnvironmentStrings(command), 0, True)
 
 If exitCode <> 0 Then
-    MsgBox "ASR Input 已異常結束（exit " & exitCode & "）。" & vbCrLf & _
-        "診斷記錄：" & logFile, vbCritical, "ASR Input 執行失敗"
+    MsgBox "ASR Input exited unexpectedly (exit " & exitCode & ")." & vbCrLf & _
+        "Diagnostic log: " & logFile, vbCritical, "ASR Input failed"
 End If
