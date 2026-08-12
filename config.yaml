@@ -31,6 +31,11 @@ vad:
 audio:
   sample_rate: 16000
 
+microphone:
+  # hypothesis：需以安靜、Windows 靜音、拔除／停用裝置實測後再調整。
+  near_zero_rms: 0.0001
+  near_zero_warning_sec: 5.0
+
 processing:
   opencc_config: s2twp   # 簡體→台灣繁體（含慣用詞轉換）
   tw_dict_path: data/tw_dict.yaml
@@ -46,16 +51,28 @@ streaming:
   max_segment_sec: 30.0      # 單段最長秒數，超過強制切句（安全網）
   min_energy: 0.005          # RMS 能量門檻，低於此值的段不送辨識（防幻覺/誤觸）
   hallucination_threshold_sec: 1.5  # 轉錄時間超過此值判定為疑似幻覺
-  min_hallucination_audio_sec: 3.0  # 音訊短於此秒數不啟動幻覺偵測（避免短句誤判）
+  min_hallucination_audio_sec: 3.0  # 歷史門檻；已知會漏極短異常，保留待固定回歸集重驗
   fallback_silence_ms: [500, 300]   # fallback 重切範圍 [起點, 底線]，每 100ms 遞減尋找最小切分
   fallback_rms_target: 0.05         # 幻覺 fallback 第一步：RMS 正規化目標值（正常語音 ~0.03-0.1）
   verbose: true              # CLI 顯示 VAD 切句、辨識時間等詳細資訊
 
 logging:
-  save_audio: true   # 儲存每段音訊 .wav + metadata，供離線實驗用
+  mode: full        # off / errors / full；目前個人開發環境保留完整診斷資料
+  max_audio_gib: 2 # 淘汰 rolling pool 最舊音訊；metadata 與已升格 corpus 不刪
+
+recovery:
+  enabled: true     # 異常關閉後復原尚未辨識完成的錄音；成功後依 logging.mode 清理音訊
+
+history:
+  recent_results_enabled: true # 文字型安全網，與完整診斷 log／Windows 剪貼簿歷程無關
+  recent_results_limit: 20
+  tray_recent_limit: 5
 
 hotkey:
   combination: "ctrl+shift+space"   # 全域錄音切換快捷鍵
+
+lifecycle:
+  idle_unload_minutes: 30   # 無錄音、排隊工作或辨識時，多久後自動釋放 ASR 模型
 
 startup:
   # PyTorch CUDA 暖機：啟動時 torch.zeros(1).to(cuda) 觸發 CUDA context 初始化。

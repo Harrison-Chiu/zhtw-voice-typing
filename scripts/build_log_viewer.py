@@ -366,8 +366,8 @@ function render() {
     }
 
     // Audio — load via fetch+blob to avoid Range request issues
-    if (d.audio_file && d._session_dir) {
-      const audioPath = `sessions/${d._source}/${d.audio_file}`;
+    if (d.audio_file && d._audio_url) {
+      const audioPath = d._audio_url;
       const audioWrap = document.createElement("div");
       const playBtn = document.createElement("button");
       playBtn.textContent = "▶ 播放";

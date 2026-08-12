@@ -12,6 +12,8 @@ from collections.abc import Callable
 import numpy as np
 import torch
 
+from asr_input.audio.events import VADDecisionEvent
+
 
 class StreamingVAD:
     """Feed audio chunks in; get speech segments out via callback.
@@ -41,6 +43,7 @@ class StreamingVAD:
         max_segment_sec: float = 30.0,
         min_energy: float = 0.005,
         verbose: bool = False,
+        on_decision_event: Callable[[VADDecisionEvent], None] | None = None,
     ) -> None:
         self._on_speech_segment = on_speech_segment
         self._sample_rate = sample_rate
@@ -54,6 +57,7 @@ class StreamingVAD:
         self._max_segment_samples = int(max_segment_sec * sample_rate)
         self._min_energy = min_energy
         self._verbose = verbose
+        self._on_decision_event = on_decision_event
         self._total_fed_samples = 0
 
         self._model: torch.jit.ScriptModule | None = None
@@ -108,6 +112,18 @@ class StreamingVAD:
         """Flush any remaining speech at end of session."""
         if self._in_speech and self._speech_buf:
             self._emit_segment()
+        if len(self._pending):
+            start = self._total_fed_samples - len(self._pending)
+            rms = float(np.sqrt(np.mean(self._pending**2)))
+            self._emit_decision_event(
+                "discard",
+                start,
+                self._total_fed_samples,
+                "unprocessed_tail_below_silero_window",
+                rms,
+                [],
+            )
+            self._pending = np.array([], dtype=np.float32)
 
     @staticmethod
     def resegment(
@@ -257,8 +273,12 @@ class StreamingVAD:
             if trim_chunks > 0:
                 probs = probs[: len(probs) - trim_chunks]
 
+        processed_end = self._total_fed_samples - len(self._pending)
+        end_sample = processed_end - max(0, self._silence_samples - self._speech_pad_samples)
+        start_sample = max(0, end_sample - len(audio))
+        rms = float(np.sqrt(np.mean(audio**2))) if len(audio) else 0.0
+
         if len(audio) >= self._min_speech_samples:
-            rms = np.sqrt(np.mean(audio**2))
             if rms >= self._min_energy:
                 self._segment_count += 1
                 if self._verbose:
@@ -268,6 +288,7 @@ class StreamingVAD:
                         f"  [切句] #{self._segment_count} {seg_sec:.1f}s ({reason}) → 辨識中...",
                         flush=True,
                     )
+                self._emit_decision_event("emit", start_sample, end_sample, reason, rms, probs)
                 self._on_speech_segment(audio, probs)
             elif self._verbose:
                 self._clear_status()
@@ -275,6 +296,12 @@ class StreamingVAD:
                     f"  [捨棄] 低能量 RMS={rms:.4f}",
                     flush=True,
                 )
+            else:
+                self._emit_decision_event(
+                    "discard", start_sample, end_sample, "low_energy", rms, probs
+                )
+        else:
+            self._emit_decision_event("discard", start_sample, end_sample, "too_short", rms, probs)
 
         self._speech_buf.clear()
         self._speech_probs.clear()
@@ -284,3 +311,30 @@ class StreamingVAD:
         self._pre_buf.clear()
         self._pre_buf_samples = 0
         self._pre_probs.clear()
+
+    def _emit_decision_event(
+        self,
+        kind: str,
+        start_sample: int,
+        end_sample: int,
+        reason: str,
+        rms: float,
+        probabilities: list[float],
+    ) -> None:
+        if self._on_decision_event is None:
+            return
+        self._on_decision_event(
+            VADDecisionEvent(
+                kind=kind,
+                start_sample=start_sample,
+                end_sample=end_sample,
+                reason=reason,
+                rms=rms,
+                probability_count=len(probabilities),
+                probability_min=min(probabilities) if probabilities else None,
+                probability_max=max(probabilities) if probabilities else None,
+                probability_mean=(
+                    sum(probabilities) / len(probabilities) if probabilities else None
+                ),
+            )
+        )

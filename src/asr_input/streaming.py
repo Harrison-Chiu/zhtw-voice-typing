@@ -44,6 +44,7 @@ class StreamingSession:
         fallback_rms_target: float = 0.05,
         on_partial: Callable[[str, str], None] | None = None,
         on_transcribing: Callable[[float], None] | None = None,
+        on_segment_done: Callable[[], None] | None = None,
         verbose: bool = False,
         session_logger: SessionLogger | None = None,
     ) -> None:
@@ -60,6 +61,7 @@ class StreamingSession:
         self._fallback_rms_target = fallback_rms_target
         self._on_partial = on_partial
         self._on_transcribing = on_transcribing
+        self._on_segment_done = on_segment_done
         self._verbose = verbose
         self._logger = session_logger
         self._session_start: float = 0
@@ -68,6 +70,7 @@ class StreamingSession:
         self._segment_stats: list[dict] = []
         self._segment_queue: queue.Queue[tuple[np.ndarray, list[float]] | None] = queue.Queue()
         self._worker: threading.Thread | None = None
+        self._worker_error: BaseException | None = None
         self._stop_event = threading.Event()
         self._stream = None
 
@@ -110,6 +113,34 @@ class StreamingSession:
         self._vad.flush()
         self._segment_queue.put(None)
 
+    def start_from_segments(self, segments: list[tuple[np.ndarray, list[float]]]) -> None:
+        """Transcribe VAD segments captured before the ASR model was ready."""
+        self.start_segment_stream()
+        for audio, probabilities in segments:
+            self.feed_segment(audio, probabilities)
+        self.finish_segment_stream()
+
+    def start_segment_stream(self) -> None:
+        """Start an externally-fed segment stream.
+
+        Recording/VAD may continue producing segments while this worker drains
+        them.  This restores live transcription without coupling microphone
+        ownership back into the ASR session.
+        """
+        self._begin()
+
+    def feed_segment(self, audio: np.ndarray, probabilities: list[float]) -> None:
+        """Queue one already-segmented utterance for transcription."""
+        if self._worker is None:
+            raise RuntimeError("Segment stream is not active")
+        self._segment_queue.put((audio, probabilities))
+
+    def finish_segment_stream(self) -> None:
+        """Signal that no more externally-fed segments will arrive."""
+        if self._worker is None:
+            raise RuntimeError("Segment stream is not active")
+        self._segment_queue.put(None)
+
     def stop(self) -> str:
         """Stop recording, flush remaining audio, return full text."""
         if self._stream is not None:
@@ -121,7 +152,13 @@ class StreamingSession:
 
         if self._worker is not None:
             self._worker.join(timeout=60)
+            if self._worker.is_alive():
+                raise TimeoutError("ASR worker did not finish within 60 seconds")
             self._worker = None
+
+        if self._worker_error is not None:
+            error, self._worker_error = self._worker_error, None
+            raise RuntimeError("ASR worker failed") from error
 
         return "".join(self._segments)
 
@@ -133,11 +170,19 @@ class StreamingSession:
     def _begin(self) -> None:
         self._segments.clear()
         self._segment_stats.clear()
+        self._segment_queue = queue.Queue()
         self._vad.reset()
         self._stop_event.clear()
+        self._worker_error = None
         self._session_start = time.time()
-        self._worker = threading.Thread(target=self._transcribe_loop, daemon=True)
+        self._worker = threading.Thread(target=self._run_transcribe_worker, daemon=True)
         self._worker.start()
+
+    def _run_transcribe_worker(self) -> None:
+        try:
+            self._transcribe_loop()
+        except BaseException as exc:
+            self._worker_error = exc
 
     @property
     def partial_text(self) -> str:
@@ -164,7 +209,7 @@ class StreamingSession:
 
     def _fallback_transcribe(
         self, audio: np.ndarray, probs: list[float]
-    ) -> list[tuple[str, float, float]]:
+    ) -> tuple[list[tuple[str, float, float]], bool]:
         """Try re-segmenting with gradually shorter silence thresholds.
 
         Steps down from fallback_silence_ms[0] to fallback_silence_ms[-1] in
@@ -173,7 +218,8 @@ class StreamingSession:
         that yields a new split, transcribe the sub-segments. If any sub-segment
         still hallucinates, continue stepping down and try the next new split.
 
-        Returns list of (raw_text, audio_sec, transcribe_sec) for each sub-segment.
+        Returns ``(results, succeeded)``. ``succeeded`` is false when every
+        available split was exhausted with at least one still-slow subsegment.
         """
         start_ms = self._fallback_silence_ms[0]
         end_ms = self._fallback_silence_ms[-1]
@@ -231,18 +277,17 @@ class StreamingSession:
 
             last_results = results
             if not any_hallucination:
-                return results
+                return results, True
 
             silence_ms -= step_ms
 
-        return last_results
+        return last_results, False
 
-    def _try_rms_normalize(self, audio: np.ndarray) -> tuple[np.ndarray, str, float]:
-        """RMS-normalize audio and re-transcribe. Returns (normalized_audio, text, dt)."""
+    def _try_rms_normalize(self, audio: np.ndarray) -> tuple[np.ndarray, str, float] | None:
+        """RMS-normalize and retry only when the samples actually change."""
         rms = float(np.sqrt(np.mean(audio**2)))
         if rms == 0 or rms >= self._fallback_rms_target:
-            text, dt = self._transcribe_one(audio)
-            return audio, text, dt
+            return None
         gain = self._fallback_rms_target / rms
         normalized = np.clip(audio * gain, -1.0, 1.0).astype(np.float32)
         text, dt = self._transcribe_one(normalized)
@@ -258,11 +303,22 @@ class StreamingSession:
             segment_audio, segment_probs = item
             audio_sec = len(segment_audio) / self._sample_rate
             rms = float(np.sqrt(np.mean(segment_audio**2)))
+            fallback_exhausted = False
 
-            if self._on_transcribing:
-                self._on_transcribing(audio_sec)
+            self._notify_observer(self._on_transcribing, audio_sec)
 
             raw_text, dt = self._transcribe_one(segment_audio)
+            attempts = [
+                {
+                    "kind": "original",
+                    "audio_sec": round(audio_sec, 2),
+                    "transcribe_sec": round(dt, 2),
+                    "raw": raw_text,
+                    "adopted": False,
+                    "settings": {"sample_rate": self._sample_rate},
+                }
+            ]
+            adopted_attempt = 0
 
             if (
                 dt > self._hallucination_threshold
@@ -276,25 +332,47 @@ class StreamingSession:
                     )
 
                 # Step 1: try RMS normalize on the full segment
-                normalized, raw_norm, dt_norm = self._try_rms_normalize(segment_audio)
-                if dt_norm <= self._hallucination_threshold:
-                    raw_text = raw_norm
-                    dt = dt_norm
-                    if self._verbose:
-                        print(
-                            f"  [✓RMS normalize] {dt_norm:.2f}s — 幻覺消除",
-                            flush=True,
-                        )
-                else:
-                    if self._verbose:
+                normalized_attempt = self._try_rms_normalize(segment_audio)
+                if normalized_attempt is not None:
+                    normalized, raw_norm, dt_norm = normalized_attempt
+                    attempts.append(
+                        {
+                            "kind": "rms_normalize",
+                            "audio_sec": round(audio_sec, 2),
+                            "transcribe_sec": round(dt_norm, 2),
+                            "raw": raw_norm,
+                            "adopted": False,
+                            "settings": {
+                                "target_rms": self._fallback_rms_target,
+                                "samples_changed": not np.array_equal(normalized, segment_audio),
+                            },
+                        }
+                    )
+                    if dt_norm <= self._hallucination_threshold:
+                        raw_text = raw_norm
+                        dt = dt_norm
+                        adopted_attempt = len(attempts) - 1
+                        if self._verbose:
+                            print(
+                                f"  [✓RMS normalize] {dt_norm:.2f}s — 幻覺消除",
+                                flush=True,
+                            )
+                    elif self._verbose:
                         print(
                             f"  [RMS normalize] {dt_norm:.2f}s — 仍幻覺 → fallback 重切",
                             flush=True,
                         )
+                elif self._verbose:
+                    print(
+                        "  [RMS normalize] 音量已達目標，跳過相同音訊的單純重試",
+                        flush=True,
+                    )
 
                 # Step 2: if still hallucinating, try resegment
                 if dt > self._hallucination_threshold:
-                    fallback_results = self._fallback_transcribe(segment_audio, segment_probs)
+                    fallback_results, fallback_succeeded = self._fallback_transcribe(
+                        segment_audio, segment_probs
+                    )
 
                     if fallback_results:
                         sub_stats = []
@@ -312,6 +390,17 @@ class StreamingSession:
                                     "processed": processed,
                                 }
                             )
+                            attempts.append(
+                                {
+                                    "kind": "resegment",
+                                    "audio_sec": round(sub_sec, 2),
+                                    "transcribe_sec": round(sub_dt, 2),
+                                    "raw": sub_raw,
+                                    "processed": processed,
+                                    "adopted": True,
+                                    "settings": {"fallback_silence_ms": self._fallback_silence_ms},
+                                }
+                            )
 
                         self._segment_stats.append(
                             {
@@ -319,9 +408,12 @@ class StreamingSession:
                                 "transcribe_sec": round(dt, 2),
                                 "rms": round(rms, 5),
                                 "fallback": True,
+                                "fallback_succeeded": fallback_succeeded,
+                                "fallback_exhausted": not fallback_succeeded,
                                 "original_raw": raw_text,
                                 "original_dt": round(dt, 2),
                                 "sub_segments": sub_stats,
+                                "attempts": attempts,
                             }
                         )
 
@@ -339,13 +431,17 @@ class StreamingSession:
                         combined = "".join(s["processed"] for s in sub_stats if s["processed"])
                         print(
                             f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
-                            f"({len(sub_stats)}子段) | {combined}",
+                            f"({len(sub_stats)}子段"
+                            f"{'，已用盡仍偏慢' if not fallback_succeeded else ''}) | {combined}",
                             flush=True,
                         )
 
-                        if self._on_partial:
-                            self._on_partial(combined, "".join(self._segments))
+                        self._notify_observer(self._on_partial, combined, "".join(self._segments))
+                        self._notify_observer(self._on_segment_done)
                         continue
+                    fallback_exhausted = True
+
+            attempts[adopted_attempt]["adopted"] = True
 
             if not raw_text.strip():
                 self._segment_stats.append(
@@ -357,6 +453,8 @@ class StreamingSession:
                         "raw": "",
                         "processed": "",
                         "empty": True,
+                        "fallback_exhausted": fallback_exhausted,
+                        "attempts": attempts,
                     }
                 )
                 if self._logger:
@@ -369,6 +467,7 @@ class StreamingSession:
                         rms=rms,
                         extra={"empty": True},
                     )
+                self._notify_observer(self._on_segment_done)
                 continue
 
             processed = self._pipeline.run(raw_text)
@@ -383,6 +482,8 @@ class StreamingSession:
                     "raw": raw_text,
                     "processed": processed,
                     "empty": False,
+                    "fallback_exhausted": fallback_exhausted,
+                    "attempts": attempts,
                 }
             )
 
@@ -402,5 +503,17 @@ class StreamingSession:
                 flush=True,
             )
 
-            if self._on_partial:
-                self._on_partial(processed, "".join(self._segments))
+            self._notify_observer(self._on_partial, processed, "".join(self._segments))
+            self._notify_observer(self._on_segment_done)
+
+    @staticmethod
+    def _notify_observer(callback, *args) -> None:
+        if callback is None:
+            return
+        try:
+            callback(*args)
+        except Exception as exc:
+            print(
+                f"ASR observer failed: {type(exc).__name__}: {exc}",
+                flush=True,
+            )

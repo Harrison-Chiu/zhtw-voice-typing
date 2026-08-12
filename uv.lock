@@ -77,6 +77,7 @@ dependencies = [
     { name = "qwen-asr" },
     { name = "silero-vad" },
     { name = "sounddevice" },
+    { name = "soundfile" },
     { name = "torch" },
     { name = "torchaudio" },
 ]
@@ -99,6 +100,7 @@ requires-dist = [
     { name = "qwen-asr", specifier = ">=0.0.6" },
     { name = "silero-vad", specifier = ">=5.1" },
     { name = "sounddevice", specifier = ">=0.5.5" },
+    { name = "soundfile", specifier = ">=0.13.1" },
     { name = "torch", specifier = ">=2.6.0", index = "https://download.pytorch.org/whl/cu124" },
     { name = "torchaudio", specifier = ">=2.6.0", index = "https://download.pytorch.org/whl/cu124" },
 ]

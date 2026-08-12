@@ -38,8 +38,13 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import unicodedata
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from asr_input.output.history_store import DEFAULT_DB_PATH, HistoryStore  # noqa: E402
 
 LOG_FILE = Path("data/logs/transcripts.jsonl")
 SESSION_DIR = Path("data/logs/sessions")
@@ -175,16 +180,34 @@ def _load_jsonl(path: Path) -> list[dict]:
     return entries
 
 
+def _load_jsonl_numbered(path: Path):
+    if not path.exists():
+        return
+    with open(path, encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if line.strip():
+                yield line_number, json.loads(line)
+
+
 def load_session_entries() -> list[dict]:
-    entries = []
+    entries = HistoryStore(DEFAULT_DB_PATH).analysis_entries() if DEFAULT_DB_PATH.exists() else []
+    imported_keys = {
+        entry["_legacy_source_key"] for entry in entries if entry.get("_legacy_source_key")
+    }
     if not SESSION_DIR.exists():
         return entries
     for session_dir in sorted(SESSION_DIR.iterdir()):
         jsonl = session_dir / "session.jsonl"
         if jsonl.exists():
-            for e in _load_jsonl(jsonl):
+            for line_number, e in _load_jsonl_numbered(jsonl):
+                source_key = f"{jsonl.resolve()}:{line_number}"
+                if source_key in imported_keys:
+                    continue
                 e["_source"] = session_dir.name
                 e["_session_dir"] = str(session_dir)
+                if e.get("audio_file"):
+                    e["_audio_url"] = f"sessions/{session_dir.name}/{e['audio_file']}"
+                e["_legacy_source_key"] = source_key
                 entries.append(e)
     return entries
 

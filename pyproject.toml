@@ -16,6 +16,7 @@ dependencies = [
     "pynput>=1.8.1",
     "pystray>=0.19.5",
     "Pillow>=11.0.0",
+    "soundfile>=0.13.1",
 ]
 
 [build-system]
