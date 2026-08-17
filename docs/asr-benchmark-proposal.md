@@ -25,6 +25,26 @@ Benchmark 不只回答「哪個比較快」，而要能穩定回答：
 時間包含載入、暖機、重跑及產生報告；純 GPU 推論通常只占一部分。首次下載模型、
 冷開機磁碟讀取與人工校對不計入日常 benchmark 時間，分開報告。
 
+### 2.1.1 現有模型探索的音檔順序
+
+目前候選模型的初輪探索固定先跑三個完整音檔：
+
+1. `data/test_audio/中英錄音測試.m4a`
+2. `data/test_audio/機器人展示，語音轉錄測試.m4a`
+3. `data/test_audio/簡報日.m4a`
+
+只有完整音檔 smoke 通過後，才進一步跑：
+
+- `data/test_audio/segments/01_純中文長句_自我介紹.wav`
+- `data/test_audio/segments/02_技術描述_開發平台.wav`
+- `data/test_audio/segments/03_中英混合_Arduino.wav`
+- `data/test_audio/segments/04_長段連續描述.wav`
+- `data/test_audio/segments/05_數字混合_電池規格.wav`
+
+上述五個 segment 是從 `簡報日.m4a` 切出的診斷片段，不是五個獨立來源；
+它們用來定位完整音檔中已觀察到的中英混合、技術名詞、長段與數字問題。候選模型
+不得只在 segments 上表現良好就視為通過完整音檔 smoke。
+
 ### 2.2 分層抽樣標籤
 
 Core 集至少覆蓋：

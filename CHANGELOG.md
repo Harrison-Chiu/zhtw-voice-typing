@@ -3,6 +3,12 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-08-17
+- VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、簡報日，
+  再測簡報日切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，
+  長檔另有 RTF > 1 與 repetition degeneration，確認不採用、不整合主流程
+  (`experiments/results/vibevoice_bitnet_smoke_2026-08-17.md`)
+
 ## 2026-08-02
 - 計畫治理：建立 A–F 主路線圖作為 SSOT，TODO 降為執行入口；補齊 VAD E0–E6 正式規格、non-inferiority gate 與 A/B/C、D/E 平行開發邊界 (1334b7a)
 - Whisper 後端初測：加入可重跑的 sequential／batched／HF SDPA benchmark；RTX 4060 上 batched 對 10–13 秒短句僅快約 5–7%，長檔吞吐雖快約 2.4 倍但發生漏段與重複，不改 production 預設 (1ad5542)
