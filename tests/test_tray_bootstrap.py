@@ -55,6 +55,26 @@ def test_hotkey_listener_starts_without_blocking_setup(monkeypatch):
     assert app._keyboard_listener is listener
 
 
+def test_hotkey_callback_error_does_not_prevent_the_next_toggle(monkeypatch):
+    app = TrayApp()
+    toggles = []
+
+    def toggle():
+        toggles.append(True)
+        if len(toggles) == 1:
+            raise UnicodeEncodeError("cp950", "🎤", 0, 1, "illegal multibyte sequence")
+
+    monkeypatch.setattr(app, "_toggle", toggle)
+    keys = list(app._hotkey)
+    for key in keys:
+        app._on_key_press(key)
+
+    app._on_key_release(keys[-1])
+    app._on_key_press(keys[-1])
+
+    assert toggles == [True, True]
+
+
 def test_quit_stops_hotkeys_and_finishes_on_background_thread():
     class StoppableIcon:
         stopped = False

@@ -167,3 +167,27 @@ def test_begin_cannot_overlap_an_existing_recording():
 
     with pytest.raises(RuntimeError, match="already active"):
         session.begin()
+
+
+def test_stream_stop_failure_still_closes_and_releases_the_session():
+    class FailingStream:
+        closed = False
+
+        def stop(self):
+            raise OSError("device disappeared")
+
+        def close(self):
+            self.closed = True
+
+    session, _ = make_session()
+    stream = FailingStream()
+    session.begin()
+    session._stream = stream
+
+    with pytest.raises(OSError, match="device disappeared"):
+        session.stop()
+
+    assert stream.closed is True
+    assert session.recording is False
+    assert session._stream is None
+    session.begin()

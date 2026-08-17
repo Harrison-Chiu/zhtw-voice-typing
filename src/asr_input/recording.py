@@ -225,13 +225,18 @@ class RecordingSession:
         if not self._recording:
             raise RuntimeError("Recording session is not active")
 
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
-
-        self._segmenter.flush()
-        self._recording = False
+        stream, self._stream = self._stream, None
+        try:
+            if stream is not None:
+                try:
+                    stream.stop()
+                finally:
+                    stream.close()
+            self._segmenter.flush()
+        finally:
+            # A PortAudio teardown or VAD flush error must not leave the
+            # session permanently marked active and make every later start fail.
+            self._recording = False
 
         with self._lock:
             audio = np.concatenate(self._chunks) if self._chunks else np.array([], dtype=np.float32)

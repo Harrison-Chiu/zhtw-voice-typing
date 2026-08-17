@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import enum
 import signal
 import sys
@@ -451,9 +452,20 @@ class TrayApp:
         self._keyboard_listener = listener
 
     def _on_key_press(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
-        self._pressed_keys.add(self._normalize_key(key))
-        if self._hotkey_latch.update(self._hotkey.issubset(self._pressed_keys)):
-            self._toggle()
+        try:
+            self._pressed_keys.add(self._normalize_key(key))
+            if self._hotkey_latch.update(self._hotkey.issubset(self._pressed_keys)):
+                self._toggle()
+        except Exception as exc:
+            # pynput terminates its listener when a callback lets an exception
+            # escape.  A presentation-only failure (for example, printing an
+            # emoji to a CP950 redirected stream) must never disable the only
+            # way the user has to stop an active recording.
+            with contextlib.suppress(OSError, UnicodeError):
+                print(
+                    f"Hotkey callback failed: {type(exc).__name__}: {exc!r}",
+                    flush=True,
+                )
 
     def _on_key_release(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         self._pressed_keys.discard(self._normalize_key(key))
@@ -547,7 +559,7 @@ class TrayApp:
         self._refresh_state()
         self._maybe_start_live_transcription()
         self._start_capture_watchdog()
-        print("🎤 錄音中；再按一次快捷鍵結束", flush=True)
+        print("錄音中；再按一次快捷鍵結束", flush=True)
 
     def _stop_capture(self) -> None:
         with self._live_lock:
@@ -1355,6 +1367,13 @@ def _optout_ecoqos() -> None:
 
 
 def main() -> None:
+    # Preserve the launcher's native encoding, but make every diagnostic write
+    # non-fatal when a message contains a character outside that code page.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            with contextlib.suppress(OSError, ValueError):
+                reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description="ASR Input tray application")
     parser.add_argument(
         "--startup-mode",
