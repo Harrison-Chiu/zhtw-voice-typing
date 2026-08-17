@@ -33,6 +33,10 @@ class FailingEngine(FakeEngine):
         raise RuntimeError("CUDA execution failed")
 
 
+class RemoteEngine(FakeEngine):
+    transcription_latency_is_quality_signal = False
+
+
 def make_session(engine, **kwargs):
     return StreamingSession(
         engine=engine,
@@ -111,6 +115,22 @@ def test_worker_exception_is_raised_instead_of_returning_partial_text():
 
     assert isinstance(exc_info.value.__cause__, RuntimeError)
     assert "CUDA execution failed" in str(exc_info.value.__cause__)
+
+
+def test_remote_latency_does_not_trigger_paid_fallback(monkeypatch):
+    engine = RemoteEngine()
+    session = make_session(engine)
+    monkeypatch.setattr(session, "_transcribe_one", lambda audio: ("remote", 10.0))
+    monkeypatch.setattr(
+        session,
+        "_try_rms_normalize",
+        lambda audio: pytest.fail("remote request must not be retried from wall-clock latency"),
+    )
+    session._min_hallucination_audio_sec = 0
+    session.start_from_segments([(np.ones(4, dtype=np.float32), [0.9])])
+
+    assert session.stop() == "<remote>"
+    assert not session.segment_stats[0].get("fallback", False)
 
 
 def test_rms_fallback_does_not_retranscribe_unchanged_audio():

@@ -28,7 +28,8 @@ def build_pipeline(config: dict, *, include_output: bool = True) -> ProcessingPi
     pipeline = ProcessingPipeline()
     pipeline.add(PunctuationNormalizer())
     pipeline.add(OpenCCConverter(config["processing"]["opencc_config"]))
-    pipeline.add(TaiwanTermReplacer())
+    if config["processing"].get("localize_tw_terms", False):
+        pipeline.add(TaiwanTermReplacer())
     if include_output and config["output"]["method"] == "clipboard":
         pipeline.add(ClipboardOutput())
     return pipeline

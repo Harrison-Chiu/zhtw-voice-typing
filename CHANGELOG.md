@@ -3,6 +3,12 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-08-18
+- 雲端實驗：加入預設停用的 OpenRouter STT adapter，key 由環境變數或 Windows Credential Manager 安全讀取，預設要求 ZDR，並記錄 usage／cost `(pending)`
+- 模型評測：補跑 Qwen3-ASR 0.6B／1.7B 與 faster-whisper 五段同場比較；FW 維持預設，1.7B 保留研究選項，0.6B 不採用 `(pending)`
+- 後處理：簡轉繁預設改為忠實字形 `s2t`；台灣詞彙本地化拆成獨立 `localize_tw_terms` 選項並預設關閉 `(pending)`
+- 錄音診斷：PortAudio `input overflow` 通知改為說明可能短暫遺失音訊的中文訊息 `(pending)`
+
 ## 2026-08-17
 - VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、簡報日，
   再測簡報日切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，

@@ -10,6 +10,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import asdict, is_dataclass
 
 import numpy as np
 import torch
@@ -207,6 +208,14 @@ class StreamingSession:
         dt = time.time() - t0
         return raw_text, dt
 
+    def _engine_usage(self) -> dict | None:
+        usage = getattr(self._engine, "last_usage", None)
+        if usage is None:
+            return None
+        if is_dataclass(usage):
+            return asdict(usage)
+        return dict(usage) if isinstance(usage, dict) else None
+
     def _fallback_transcribe(
         self, audio: np.ndarray, probs: list[float]
     ) -> tuple[list[tuple[str, float, float]], bool]:
@@ -308,6 +317,7 @@ class StreamingSession:
             self._notify_observer(self._on_transcribing, audio_sec)
 
             raw_text, dt = self._transcribe_one(segment_audio)
+            usage = self._engine_usage()
             attempts = [
                 {
                     "kind": "original",
@@ -316,12 +326,14 @@ class StreamingSession:
                     "raw": raw_text,
                     "adopted": False,
                     "settings": {"sample_rate": self._sample_rate},
+                    **({"usage": usage} if usage else {}),
                 }
             ]
             adopted_attempt = 0
 
             if (
-                dt > self._hallucination_threshold
+                getattr(self._engine, "transcription_latency_is_quality_signal", True)
+                and dt > self._hallucination_threshold
                 and audio_sec >= self._min_hallucination_audio_sec
             ):
                 if self._verbose:
@@ -465,7 +477,7 @@ class StreamingSession:
                         audio_sec=audio_sec,
                         transcribe_sec=dt,
                         rms=rms,
-                        extra={"empty": True},
+                        extra={"empty": True, **({"usage": usage} if usage else {})},
                     )
                 self._notify_observer(self._on_segment_done)
                 continue
@@ -495,6 +507,7 @@ class StreamingSession:
                     audio_sec=audio_sec,
                     transcribe_sec=dt,
                     rms=rms,
+                    extra={"usage": usage} if usage else None,
                 )
 
             seg_num = len(self._segments)

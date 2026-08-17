@@ -35,8 +35,23 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
             temperature=asr_cfg.get("temperature", [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
         )
 
+    elif engine_name == "openrouter":
+        from asr_input.asr.openrouter import OpenRouterASREngine
+
+        engine = OpenRouterASREngine(
+            model_id=asr_cfg["model_id"],
+            language=asr_cfg.get("language"),
+            timeout_sec=asr_cfg.get("timeout_sec", 45.0),
+            api_key_env=asr_cfg.get("api_key_env", "OPENROUTER_API_KEY"),
+            credential_service=asr_cfg.get("credential_service", "asr-input/openrouter"),
+            credential_username=asr_cfg.get("credential_username", "api-key"),
+            zdr=asr_cfg.get("zdr", True),
+        )
+
     else:
-        raise ValueError(f"Unknown ASR engine: {engine_name!r}. Supported: qwen, whisper")
+        raise ValueError(
+            f"Unknown ASR engine: {engine_name!r}. Supported: qwen, whisper, openrouter"
+        )
 
     if vad_cfg and vad_cfg.get("enabled", False):
         from asr_input.asr.vad_engine import VadSegmentedEngine

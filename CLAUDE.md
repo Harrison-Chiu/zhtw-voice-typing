@@ -3,7 +3,7 @@
 ## 專案概述
 
 本地語音輸入系統，在 RTX 4060（8GB VRAM）上以本地 ASR 引擎（預設 faster-whisper，可切換 Qwen3-ASR）辨識語音，
-經 OpenCC + 自訂詞表後處理輸出**台灣繁體中文**。目標是日常語音輸入工具。
+經 OpenCC 字形轉換輸出繁體中文；台灣詞彙本地化是獨立且預設關閉的選項。目標是日常語音輸入工具。
 
 ## 快速指令
 
@@ -95,6 +95,7 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `src/asr_input/asr/base.py` — ASR 引擎抽象介面（`ASREngine`）
 - `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
+- `src/asr_input/asr/openrouter.py` — 預設停用的雲端 STT adapter，key 只讀環境變數／Credential Manager
 - `src/asr_input/asr/whisper_fw.py` — faster-whisper 實作（**目前預設引擎**）
 - `src/asr_input/processing/pipeline.py` — `TextProcessor` 抽象介面 + `ProcessingPipeline` 串接器
 - `src/asr_input/processing/punct_norm.py` — 上下文感知標點正規化（CJK 旁半形→全形）
@@ -121,11 +122,12 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 
 ## 已確立的設計決策（不要重做）
 
-- **ASR 引擎**：**預設改用 faster-whisper large-v3-turbo**（~2GB VRAM、辨識 ~0.5s）。Qwen3-ASR 1.7B 保留為備用引擎。可在 `config.yaml` 的 `asr.engine` 切換（`whisper` / `qwen`）
+- **ASR 引擎**：**預設使用 faster-whisper large-v3-turbo**。Qwen3-ASR 1.7B 保留為可選的高忠實度研究引擎；0.6B 不採用。2026-08-18 同五段 warm-cache benchmark：FW / Qwen 0.6B / Qwen 1.7B 平均 RTF 約 0.031 / 0.139 / 0.145，GPU 增量約 2.4 / 2.3 / 4.6 GiB。1.7B 中文實詞偶有明顯勝點（彈匣、結構支架），但中英混合專名仍輸 FW（ArduCopter、PWM），且較慢、較吃顯存並保留較多贅詞；不足以取代預設。原始輸出見 `experiments/results/qwen_size_benchmark_20260818_003516.json`
+- **OpenRouter 雲端 adapter**：已建好但預設停用。key 只讀 `OPENROUTER_API_KEY` 或 Windows Credential Manager，不接受 config 明文；預設要求 ZDR，並保留最近一次 usage/cost。它用於快速篩選雲端 STT，不代表同名本地模型品質
 - **whisper-turbo zh-TW 微調評測（不採用）**：測 `JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW`，走 transformers pipeline `chunk_length_s=30`。原生繁體+原生全形標點（贏 baseline 的 raw），但出現大量單字重複、專有名詞錯更多、句界漏併。**2026-06-29 重測 segments 釐清**：短句（~10-16s）品質其實≈baseline，唯一明顯弱點是易掉句末標點；但**單段 27.7s（<30s，不觸發分塊）也會崩潰成「量量量」重複數百次** → 重複退化**不純是分塊造成**（先前「與分塊有關」的假設只對一半，模型本身在難段也會塌）。淘汰理由正確版＝**相對 baseline 無增益 + 崩潰風險**，非模型本體品質差。baseline（faster-whisper + VAD + 短 prompt + 後處理）更穩，不值得為它做 CT2 轉檔或另建 VAD 路徑。腳本 `scripts/test_hf_whisper_zhtw.py`、`experiments/run_4a_segments.py`，輸出 `experiments/results/whisper_zhtw_segments_2026-06-29.json`
 - **Whisper initial_prompt 能引導繁體+標點（已證實）**：短繁體句+全形標點（`繁體中文，台灣用語。`）→ 輸出原生 0% 簡體 + 帶標點。prompt 字體決定輸出字體、prompt 標點決定輸出標點，兩者獨立。詳見 `experiments/experiment_whisper_prompt.py`。這跟 Qwen 的 context 完全相反
 - **標點全形化靠後處理，不靠 prompt（已證實，勿重試）**：三輪實驗（v1-v3）測試了 15+ 種 prompt、hotwords、suppress_tokens。結論：長 prompt 可提高全形率但引入亂碼/幻覺；hotwords 對多 token 標點無效；suppress 半形逗號會被句號取代。最穩方案是短 prompt + `PunctuationNormalizer` 後處理（看前後字元判斷中英文語境）。實驗結果見 `experiments/results/experiment_punct_v2.json`、`experiments/results/experiment_punct_v3.json`、`experiments/results/experiment_viewer.html`
-- **繁中轉換策略**：簡轉繁**以** OpenCC s2twp + 自訂詞表後處理**為主**（最穩、跨內容一致）。模型層 prompt 引導只能當輔助（見下「繁體引導」條），不足以單獨依賴。OpenCC 設有智慧偵測：白名單排除「台」等台灣常用異體，其餘有任何簡體字才觸發轉換
+- **繁中轉換策略（2026-08-18 修訂）**：語音輸入的預設責任是忠實轉錄，因此 OpenCC 改用純字形 `s2t`；`接口→介面`、`支持→支援`、`設備→裝置` 等語體本地化與 `data/tw_dict.yaml` 改為獨立 `localize_tw_terms` 選項、預設關閉。模型層繁體 prompt 仍只能輔助。OpenCC 智慧偵測保留：白名單排除「台」等台灣常用異體，其餘有簡體字才觸發轉換
 - **Fun-ASR-Nano 評測結論（已對版實測·不採用，2026-06-29 翻案）**：先前（2026-06-25）以為「funasr 版本卡關」是誤判。真因是 **Fun-ASR-Nano 是 LLM-ASR（SenseVoice encoder + Qwen3-0.6B backbone），HF 模型快照裡沒有 `model.py`**，通用 `pip install funasr`（1.3.14，版本其實符合官方要求 `funasr>=1.3.0`）的 AutoModel 找不到 `FunASRNano` 類別 → 退化用 CTC 路徑硬載 model.pt → 噴 `miss key ctc_decoder.*` 並輸出單字重複垃圾。**那些 `miss key` 警告是無害紅鯡魚**（LLM-ASR 前向不用 CTC head，正常能跑的版本一樣會印）。**修法**：clone 官方 repo `github.com/FunAudioLLM/Fun-ASR`，用 `.venv-funasr` + `AutoModel(..., remote_code="<repo>/model.py")` 指向 repo 的 model.py（內含 FunASRNano 實作）。修好後輸出乾淨、短句辨識最準、RTF~0.23。限制：**原生簡體**需 OpenCC、`language`/`hotword` 引導繁體不穩健（見下）。結論：可用但相對 baseline 無增益，不採用。腳本 `scripts/test_funasr_nano_v2.py`、`experiments/probe_funasr_scaffold.py`
 - **Hotwords 實驗結論（已證實）**：短詞 hotwords（`"詞表 待辦 清單"`）最安全不影響品質；長句 hotwords 會導致標點全變句號、重複句、幻覺。擴充 initial_prompt 也有副作用（如「開發平台→開發平臺」）。詳見 `experiments/results/experiment_hotwords.json`
 - **Qwen3-ASR API**：引導文字用 `context` 參數（不是 `prompt`），音訊可傳 `(np.ndarray, sample_rate)` tuple
@@ -139,13 +141,11 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest
 
-## 台灣繁中轉換說明
+## 繁中字形與台灣詞彙轉換
 
-ASR 模型輸出簡體中文 + 中國用語，經兩層後處理：
-1. **OpenCC s2twp** — 簡體→台灣繁體 + 慣用詞轉換（如 视频→影片、软件→軟體）
-2. **自訂詞表** `data/tw_dict.yaml` — 補 OpenCC 沒覆蓋的（如 人工智能→人工智慧、代碼→程式碼）
-
-已知問題：OpenCC 會過度轉換某些詞（如 平台→平臺），需要在詞表中加反向修正。
+ASR 模型若輸出簡體，預設只經 **OpenCC `s2t`** 做字形轉換，保留實際說出的地區詞彙。
+設定 `processing.localize_tw_terms: true` 才會再套用 `data/tw_dict.yaml` 的台灣詞彙與既有修正。
+字形與語體分層可避免 ASR 在沒有聲學證據時改寫使用者措辭。
 
 ## 目前狀態
 
@@ -153,7 +153,7 @@ v0.3 — MVP 完成，進入後續改善階段。核心鏈路全數驗證通過�
 功能細節見「架構」與「已確立的設計決策」；主路線與待決策見
 `docs/roadmap.md`，近期執行入口見 `TODO.md`。
 
-**模型橫向比較告一段落（2026-06-29）**：四引擎（baseline FW / whisper-zh-TW / Qwen3-ASR / Fun-ASR-Nano）評測完成，結論 **FW 整體最佳、維持預設**（見上「四引擎評測總結」）。三個候選都跑通且原始輸出已存檔，但無一值得替換。下一步改善方向轉向「**把 FW 做得更好**」而非換模型——路線見 `docs/roadmap.md`，底層細節見 `docs/faster-whisper-customization-plan.md`。
+**模型橫向比較（2026-08-18 補測）**：Qwen3-ASR 0.6B／1.7B 已用五段固定 corpus 與 FW 同場重測。FW 維持預設；1.7B 保留可選研究引擎，0.6B 無速度、顯存或品質優勢。下一步改善方向仍以「把 FW 做得更好」為主。
 
 ## 注意事項
 

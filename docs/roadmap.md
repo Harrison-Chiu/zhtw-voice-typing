@@ -350,8 +350,8 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 檢查、首次模型下載與失敗重試、portable onedir、升級時保留使用者設定、發布/開發設定分離，
 以及 `docs/index.html` 翻新。
 
-公開版預設只安裝與支援 faster-whisper；Qwen 等已完成比較但未採用的研究引擎不屬於正式
-執行依賴，可將 adapter、腳本與結果保留在研究區，並以額外 dependency group 隔離。模型快取、
+公開版仍以 faster-whisper 為預設；Qwen 與預設停用的 OpenRouter adapter 是否納入正式安裝，
+發布前依實際 import/打包稽核決定，或以額外 dependency group 隔離。模型快取、
 設定與 log 必須使用穩定的使用者資料目錄，不依賴目前工作目錄；發布版預設關閉音訊 log，
 診斷模式與開發版才保留完整資料。是否移除其他依賴，以實際 import/打包稽核結果決定。
 

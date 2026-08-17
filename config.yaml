@@ -18,6 +18,16 @@ asr:
   # language: "Chinese"
   # context: ""
 
+  # --- OpenRouter（雲端實驗引擎；目前停用，不要把 API key 寫進本檔）---
+  # engine: openrouter
+  # model_id: "qwen/qwen3-asr-flash-2026-02-10"
+  # language: "zh"
+  # timeout_sec: 45
+  # api_key_env: "OPENROUTER_API_KEY"
+  # credential_service: "asr-input/openrouter"
+  # credential_username: "api-key"
+  # zdr: true
+
 vad:
   enabled: true
   threshold: 0.5                # VAD 信心門檻（0-1，越高越嚴格）
@@ -37,7 +47,9 @@ microphone:
   near_zero_warning_sec: 5.0
 
 processing:
-  opencc_config: s2twp   # 簡體→台灣繁體（含慣用詞轉換）
+  # 語音輸入預設只轉字形，保留使用者實際說出的「接口／設備」等詞。
+  opencc_config: s2t     # 簡體→繁體字形，不改寫地區詞彙
+  localize_tw_terms: false # true 才套用 data/tw_dict.yaml 的台灣詞彙／已知修正
   tw_dict_path: data/tw_dict.yaml
 
 output:

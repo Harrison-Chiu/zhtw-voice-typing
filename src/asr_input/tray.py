@@ -1077,10 +1077,13 @@ class TrayApp:
         self._update_runtime_icon()
 
     def _on_capture_status(self, event) -> None:
-        self._input_warning = event.message
+        message = event.message
+        if "input overflow" in message.lower():
+            message = "麥克風資料一度來不及接收，該瞬間可能有少量音訊遺失"
+        self._input_warning = message
         print(f"麥克風 callback 警告：{event.message}", flush=True)
         self._refresh_state()
-        _silent_notify(self._tray, event.message, "ASR Input 麥克風警告")
+        _silent_notify(self._tray, message, "ASR Input 麥克風警告")
 
     def _start_capture_watchdog(self) -> None:
         self._stop_capture_watchdog()

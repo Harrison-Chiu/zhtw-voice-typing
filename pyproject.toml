@@ -17,6 +17,7 @@ dependencies = [
     "pystray>=0.19.5",
     "Pillow>=11.0.0",
     "soundfile>=0.13.1",
+    "keyring>=25.6.0",
 ]
 
 [build-system]
