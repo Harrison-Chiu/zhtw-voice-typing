@@ -228,7 +228,9 @@ class StreamingSession:
         still hallucinates, continue stepping down and try the next new split.
 
         Returns ``(results, succeeded)``. ``succeeded`` is false when every
-        available split was exhausted with at least one still-slow subsegment.
+        available split was exhausted with at least one still-slow subsegment;
+        the caller then drops the sub-segments that are still flagged and short
+        enough to be beyond further recovery.
         """
         start_ms = self._fallback_silence_ms[0]
         end_ms = self._fallback_silence_ms[-1]
@@ -292,6 +294,18 @@ class StreamingSession:
 
         return last_results, False
 
+    def _is_unrecoverable_hallucination(self, audio_sec: float, dt: float) -> bool:
+        """Latency still flags a hallucination on audio too short to recover from.
+
+        `min_hallucination_audio_sec` used to gate detection itself, so anything
+        shorter was emitted unchecked; real logs show 0.26s clips producing 60+
+        characters of unrelated text (see `tests/data/short_segment_cases.json`).
+        It now gates the *recovery* instead: below it, resegmentation has no
+        second silence gap to find, so a still-slow result has no remaining fix
+        and the text is dropped rather than pasted into the user's clipboard.
+        """
+        return dt > self._hallucination_threshold and audio_sec < self._min_hallucination_audio_sec
+
     def _try_rms_normalize(self, audio: np.ndarray) -> tuple[np.ndarray, str, float] | None:
         """RMS-normalize and retry only when the samples actually change."""
         rms = float(np.sqrt(np.mean(audio**2)))
@@ -334,7 +348,6 @@ class StreamingSession:
             if (
                 getattr(self._engine, "transcription_latency_is_quality_signal", True)
                 and dt > self._hallucination_threshold
-                and audio_sec >= self._min_hallucination_audio_sec
             ):
                 if self._verbose:
                     print(
@@ -380,8 +393,12 @@ class StreamingSession:
                         flush=True,
                     )
 
-                # Step 2: if still hallucinating, try resegment
-                if dt > self._hallucination_threshold:
+                # Step 2: if still hallucinating, try resegment. Too short to hold a
+                # second silence gap → resegment cannot produce a new split, so skip it.
+                if (
+                    dt > self._hallucination_threshold
+                    and audio_sec >= self._min_hallucination_audio_sec
+                ):
                     fallback_results, fallback_succeeded = self._fallback_transcribe(
                         segment_audio, segment_probs
                     )
@@ -389,17 +406,24 @@ class StreamingSession:
                     if fallback_results:
                         sub_stats = []
                         for sub_raw, sub_sec, sub_dt in fallback_results:
-                            if sub_raw.strip():
+                            rejected = self._is_unrecoverable_hallucination(sub_sec, sub_dt)
+                            if sub_raw.strip() and not rejected:
                                 processed = self._pipeline.run(sub_raw)
                                 self._segments.append(processed)
                             else:
                                 processed = ""
+                            if rejected and self._verbose:
+                                print(
+                                    f"  [⛔捨棄子段] {sub_sec:.1f}s→{sub_dt:.1f}s | {sub_raw[:50]}",
+                                    flush=True,
+                                )
                             sub_stats.append(
                                 {
                                     "audio_sec": round(sub_sec, 2),
                                     "transcribe_sec": round(sub_dt, 2),
                                     "raw": sub_raw,
                                     "processed": processed,
+                                    "rejected": rejected,
                                 }
                             )
                             attempts.append(
@@ -409,10 +433,14 @@ class StreamingSession:
                                     "transcribe_sec": round(sub_dt, 2),
                                     "raw": sub_raw,
                                     "processed": processed,
-                                    "adopted": True,
+                                    "adopted": not rejected,
+                                    "rejected": rejected,
                                     "settings": {"fallback_silence_ms": self._fallback_silence_ms},
                                 }
                             )
+
+                        combined = "".join(s["processed"] for s in sub_stats if s["processed"])
+                        rejected_subs = [s for s in sub_stats if s["rejected"]]
 
                         self._segment_stats.append(
                             {
@@ -424,6 +452,11 @@ class StreamingSession:
                                 "fallback_exhausted": not fallback_succeeded,
                                 "original_raw": raw_text,
                                 "original_dt": round(dt, 2),
+                                # `raw`/`processed` mirror the non-fallback stats so log
+                                # readers see the adopted text instead of an empty row.
+                                "raw": raw_text,
+                                "processed": combined,
+                                "rejected_sub_segments": len(rejected_subs),
                                 "sub_segments": sub_stats,
                                 "attempts": attempts,
                             }
@@ -440,11 +473,12 @@ class StreamingSession:
                             )
 
                         seg_num = len(self._segments)
-                        combined = "".join(s["processed"] for s in sub_stats if s["processed"])
                         print(
                             f"  [#{seg_num}] {audio_sec:.1f}s→fallback "
                             f"({len(sub_stats)}子段"
-                            f"{'，已用盡仍偏慢' if not fallback_succeeded else ''}) | {combined}",
+                            f"{'，已用盡仍偏慢' if not fallback_succeeded else ''}"
+                            f"{f'，捨棄 {len(rejected_subs)} 子段' if rejected_subs else ''}"
+                            f") | {combined}",
                             flush=True,
                         )
 
@@ -453,7 +487,49 @@ class StreamingSession:
                         continue
                     fallback_exhausted = True
 
-            attempts[adopted_attempt]["adopted"] = True
+            latency_is_signal = getattr(
+                self._engine, "transcription_latency_is_quality_signal", True
+            )
+            rejected = latency_is_signal and self._is_unrecoverable_hallucination(audio_sec, dt)
+            attempts[adopted_attempt]["adopted"] = not rejected
+            if rejected:
+                attempts[adopted_attempt]["rejected"] = True
+                print(
+                    f"  [⛔捨棄] {audio_sec:.1f}s→{dt:.1f}s "
+                    f"(短段無重切空間，判定幻覺) | {raw_text[:50]}",
+                    flush=True,
+                )
+                self._segment_stats.append(
+                    {
+                        "audio_sec": round(audio_sec, 2),
+                        "transcribe_sec": round(dt, 2),
+                        "ratio": round(dt / audio_sec, 3) if audio_sec > 0 else 0,
+                        "rms": round(rms, 5),
+                        "raw": raw_text,
+                        "processed": "",
+                        "empty": False,
+                        "rejected": True,
+                        "rejected_reason": "short_segment_hallucination",
+                        "fallback_exhausted": fallback_exhausted,
+                        "attempts": attempts,
+                    }
+                )
+                if self._logger:
+                    self._logger.log_segment(
+                        audio=segment_audio,
+                        raw_text=raw_text,
+                        processed_text="",
+                        audio_sec=audio_sec,
+                        transcribe_sec=dt,
+                        rms=rms,
+                        extra={
+                            "rejected": True,
+                            "rejected_reason": "short_segment_hallucination",
+                            **({"usage": usage} if usage else {}),
+                        },
+                    )
+                self._notify_observer(self._on_segment_done)
+                continue
 
             if not raw_text.strip():
                 self._segment_stats.append(

@@ -4,6 +4,22 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 修正短段幻覺直接進剪貼簿：`min_hallucination_audio_sec`（3.0s）原本讓 3 秒以下的段跳過整個
+  幻覺偵測，實際 log 出現 0.26s 音訊輸出 60 字亂碼、0.29s 子段輸出「作詞・作曲・編曲 男高等部分」
+  等文字被原樣貼給使用者。改為此門檻只切分「還救得回來／救不回來」：短段仍跑 RMS 正規化，
+  救不回來就捨棄文字並在 log 保留原音訊、各次嘗試與 `hallucination-rejected` 標籤 `(pending)`
+- 修正 fallback 切分用盡後仍採用已知偏慢子段：`fallback_succeeded=False` 時，仍超過 1.5s 且
+  短於 `min_hallucination_audio_sec` 的子段不再併入輸出（`adopted=False` + `rejected=True`）；
+  這正是 job 364bdc50 剪貼簿出現「作詞・作曲・編曲，男高等部分方向政府，強行固定中文名字。」
+  的來源 `(pending)`
+- 修正 fallback 段在 `segments` 表 `processed_text` 為 NULL：stat 補上 `raw`/`processed`，
+  log 檢視器不再顯示「30 秒音訊、文字空白」的假象 `(pending)`
+- 回歸集：`tests/data/short_segment_cases.json` 凍結 143 筆真實 <3s 辨識嘗試（人工標註），
+  產生器 `experiments/extract_short_segment_cases.py`，測試 `tests/test_short_segment_hallucination.py`
+  （修正前 8 個失敗、修正後全過）`(pending)`
+- 重現：`experiments/replay_short_segment_hallucination.py` 用存檔音訊重跑 job 364bdc50 seg3，
+  0.29s→3.36s、0.52s→3.54s 皆輸出無關文字；文字跨 session 不同、延遲訊號穩定重現
+  `(experiments/results/short_segment_hallucination_2026-09-01.md)` `(pending)`
 - 移除 `startup.cuda_warmup`：暖機呼叫本身早已被拿掉，只剩 `tray.py` 把設定讀進 `self._cuda_warmup`
   卻無人使用，是死設定；2026-09-01 VAD 改走 ONNX、錄音路徑不再 import torch 後，「留給未來 PyTorch
   引擎或 GPU VAD」的理由也更弱。config.yaml 的 `startup:` 區塊與說明一併刪除 `(cf01f2a)`

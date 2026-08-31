@@ -1,0 +1,1308 @@
+{
+ "description": "凍結回歸集：< 3 秒音訊的真實辨識嘗試，用來檢驗短段幻覺偵測規則。",
+ "provenance": {
+  "extracted_at": "2026-09-01",
+  "source": "data/logs/history.sqlite3 · asr_attempts · audio_sec < 3",
+  "extractor": "experiments/extract_short_segment_cases.py",
+  "asr_config": "faster-whisper large-v3-turbo / float16 / cuda / beam_size 5 / initial_prompt 使用繁體中文，台灣用語。/ hotwords 詞表 待辦 清單 聲學 標點 主分支 逗號",
+  "labeling": "作者逐筆人工判讀 raw 文字；label 為觀察結論，不是模型輸出。 hallucination=明顯與語音無關或退化的輸出，filler=真實語助詞，normal=可用輸出。",
+  "note": "音訊本身仍在 history.sqlite3 指向的 rolling pool，受 2 GiB 容量護欄可能被淘汰；本檔只凍結時間與文字，供不需重跑模型的規則回歸。"
+ },
+ "cases": [
+  {
+   "source": "82fc0fec#seg2#att0",
+   "kind": "original",
+   "audio_sec": 0.42,
+   "transcribe_sec": 3.61,
+   "adopted": true,
+   "raw": "施、ㄱ争、田中,新郡、銘似、頂會溫時改的指、車、木舶、側 、標? clarity é及解法。歐水底油煮 connais等倍半分上面離開,令人最�торы純分身的支揮。",
+   "label": "hallucination",
+   "note": "亂碼混語，0.42s 音訊產出 60+ 字"
+  },
+  {
+   "source": "364bdc50#seg3#att3",
+   "kind": "resegment",
+   "audio_sec": 0.52,
+   "transcribe_sec": 3.45,
+   "adopted": true,
+   "raw": "方向政府 強行固定中文名字。",
+   "label": "hallucination",
+   "note": "與上下文無關的短句幻覺（fallback 重切子段）"
+  },
+  {
+   "source": "5f1b67a5#seg3#att0",
+   "kind": "original",
+   "audio_sec": 0.26,
+   "transcribe_sec": 3.33,
+   "adopted": true,
+   "raw": "希望等待辦 清單 詞表 偕供的聲音、調節優吻。作詞表 urance猛 Eli 手指向 影響。",
+   "label": "hallucination",
+   "note": "把 config 的 hotwords（詞表/待辦/清單）吐回來"
+  },
+  {
+   "source": "364bdc50#seg3#att2",
+   "kind": "resegment",
+   "audio_sec": 0.29,
+   "transcribe_sec": 3.21,
+   "adopted": true,
+   "raw": "作詞・作曲・編曲 男高等部分",
+   "label": "hallucination",
+   "note": "Whisper 對日文字幕語料的典型幻覺句（fallback 重切子段）"
+  },
+  {
+   "source": "afc127d6#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.25,
+   "transcribe_sec": 1.65,
+   "adopted": true,
+   "raw": "嗯...",
+   "label": "filler",
+   "note": "真實語助詞，無資訊量；被延遲規則掃到屬可接受誤判"
+  },
+  {
+   "source": "850ddb60#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.35,
+   "transcribe_sec": 1.59,
+   "adopted": true,
+   "raw": "醬 醬",
+   "label": "hallucination",
+   "note": "單字重複"
+  },
+  {
+   "source": "8e1c0711#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.03,
+   "transcribe_sec": 1.57,
+   "adopted": true,
+   "raw": "呰 呰 呰 呰 呰。",
+   "label": "hallucination",
+   "note": "同字重複退化"
+  },
+  {
+   "source": "61968c59#seg4#att0",
+   "kind": "original",
+   "audio_sec": 1.12,
+   "transcribe_sec": 1.24,
+   "adopted": true,
+   "raw": "這樣子。",
+   "label": "normal"
+  },
+  {
+   "source": "eedf43a0#seg0#att0",
+   "kind": "original",
+   "audio_sec": 0.68,
+   "transcribe_sec": 1.17,
+   "adopted": true,
+   "raw": "呃……",
+   "label": "normal"
+  },
+  {
+   "source": "364bdc50#seg2#att0",
+   "kind": "original",
+   "audio_sec": 0.8,
+   "transcribe_sec": 1.03,
+   "adopted": true,
+   "raw": "Duh.",
+   "label": "hallucination",
+   "note": "0.8s 中文語境輸出英文感嘆詞；轉錄 1.03s 未超過門檻，屬已知漏抓"
+  },
+  {
+   "source": "5074c123#seg3#att0",
+   "kind": "original",
+   "audio_sec": 0.74,
+   "transcribe_sec": 0.9,
+   "adopted": true,
+   "raw": "部分嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "5bcd4af5#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.0,
+   "transcribe_sec": 0.9,
+   "adopted": true,
+   "raw": "呃……",
+   "label": "normal"
+  },
+  {
+   "source": "8e1c0711#seg0#att0",
+   "kind": "original",
+   "audio_sec": 0.96,
+   "transcribe_sec": 0.66,
+   "adopted": true,
+   "raw": "答案。",
+   "label": "normal"
+  },
+  {
+   "source": "51daaba2#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.37,
+   "transcribe_sec": 0.62,
+   "adopted": true,
+   "raw": "可能類似你的比意選項嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "f28b43fe#seg6#att0",
+   "kind": "original",
+   "audio_sec": 2.85,
+   "transcribe_sec": 0.61,
+   "adopted": true,
+   "raw": "策略嗎?或者是說",
+   "label": "normal"
+  },
+  {
+   "source": "9c427bf9#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.7,
+   "transcribe_sec": 0.6,
+   "adopted": true,
+   "raw": "還是說會斷在哪裡?",
+   "label": "normal"
+  },
+  {
+   "source": "2bd48d08#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.37,
+   "transcribe_sec": 0.6,
+   "adopted": true,
+   "raw": "或甚至是……",
+   "label": "normal"
+  },
+  {
+   "source": "88c756a0#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.63,
+   "transcribe_sec": 0.6,
+   "adopted": true,
+   "raw": "剛剛前面其實講蠻多的 所以說",
+   "label": "normal"
+  },
+  {
+   "source": "d4348c97#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.89,
+   "transcribe_sec": 0.59,
+   "adopted": true,
+   "raw": "Spark 才能跑起來的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "62a4b3fa#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.21,
+   "transcribe_sec": 0.58,
+   "adopted": true,
+   "raw": "就這樣嗎?還有沒有其他的問題?",
+   "label": "normal"
+  },
+  {
+   "source": "e8cac65e#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.4,
+   "transcribe_sec": 0.58,
+   "adopted": true,
+   "raw": "然後 尺度估計",
+   "label": "normal"
+  },
+  {
+   "source": "0374be9b#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.63,
+   "transcribe_sec": 0.58,
+   "adopted": true,
+   "raw": "然後第三個等待點。",
+   "label": "normal"
+  },
+  {
+   "source": "afc127d6#seg0#att0",
+   "kind": "original",
+   "audio_sec": 0.87,
+   "transcribe_sec": 0.57,
+   "adopted": true,
+   "raw": "就是……",
+   "label": "normal"
+  },
+  {
+   "source": "9cdda95a#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.96,
+   "transcribe_sec": 0.57,
+   "adopted": true,
+   "raw": "然後你說",
+   "label": "normal"
+  },
+  {
+   "source": "5074c123#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.86,
+   "transcribe_sec": 0.56,
+   "adopted": true,
+   "raw": "理論上你應該是把……",
+   "label": "normal"
+  },
+  {
+   "source": "d6e09ec3#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.86,
+   "transcribe_sec": 0.56,
+   "adopted": true,
+   "raw": "我暫時可能...",
+   "label": "normal"
+  },
+  {
+   "source": "08e87514#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.89,
+   "transcribe_sec": 0.56,
+   "adopted": true,
+   "raw": "對 類似這樣子 就是",
+   "label": "normal"
+  },
+  {
+   "source": "9655df23#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.87,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "就不行。",
+   "label": "normal"
+  },
+  {
+   "source": "fe877e7b#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.57,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "然後 另外一個。",
+   "label": "normal"
+  },
+  {
+   "source": "5bcd4af5#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.02,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "這邊是單純列出問題嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "10076ae5#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.15,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "最主要是極致的攝影機。",
+   "label": "normal"
+  },
+  {
+   "source": "921c2329#seg4#att0",
+   "kind": "original",
+   "audio_sec": 2.5,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "因為 他們 當時 給我……",
+   "label": "normal"
+  },
+  {
+   "source": "afaad074#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.88,
+   "transcribe_sec": 0.55,
+   "adopted": true,
+   "raw": "因為我猜……",
+   "label": "normal"
+  },
+  {
+   "source": "3ad48db2#seg3#att0",
+   "kind": "original",
+   "audio_sec": 2.69,
+   "transcribe_sec": 0.54,
+   "adopted": true,
+   "raw": "所以他就會有辦法去...",
+   "label": "normal"
+  },
+  {
+   "source": "d4348c97#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.72,
+   "transcribe_sec": 0.54,
+   "adopted": true,
+   "raw": "是 只 需要",
+   "label": "normal"
+  },
+  {
+   "source": "62f18908#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.76,
+   "transcribe_sec": 0.54,
+   "adopted": true,
+   "raw": "呃...我...",
+   "label": "normal"
+  },
+  {
+   "source": "9ca98054#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.79,
+   "transcribe_sec": 0.54,
+   "adopted": true,
+   "raw": "呃 細節我不確定 但至少是同一個細...",
+   "label": "normal"
+  },
+  {
+   "source": "e14718d7#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.09,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "預設的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "3987564a#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.09,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "講重點",
+   "label": "normal"
+  },
+  {
+   "source": "c4e25878#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.18,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "然後 主動 丟 正",
+   "label": "normal"
+  },
+  {
+   "source": "5f1b67a5#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.18,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "當時 抓的……",
+   "label": "normal"
+  },
+  {
+   "source": "d722cc50#seg5#att0",
+   "kind": "original",
+   "audio_sec": 2.6,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "我用某種方法 不管是",
+   "label": "normal"
+  },
+  {
+   "source": "7cfa050b#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.95,
+   "transcribe_sec": 0.53,
+   "adopted": true,
+   "raw": "掃描 是不是用fitness 比較快?",
+   "label": "normal"
+  },
+  {
+   "source": "e205f521#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.6,
+   "transcribe_sec": 0.52,
+   "adopted": true,
+   "raw": "好 我覺得這樣子",
+   "label": "normal"
+  },
+  {
+   "source": "af181110#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.05,
+   "transcribe_sec": 0.52,
+   "adopted": true,
+   "raw": "其中一組 假設 V3",
+   "label": "normal"
+  },
+  {
+   "source": "8b6ad021#seg6#att0",
+   "kind": "original",
+   "audio_sec": 2.08,
+   "transcribe_sec": 0.52,
+   "adopted": true,
+   "raw": "然後 或者是說 它的",
+   "label": "normal"
+  },
+  {
+   "source": "364bdc50#seg9#att0",
+   "kind": "original",
+   "audio_sec": 2.79,
+   "transcribe_sec": 0.52,
+   "adopted": true,
+   "raw": "重要程度比較高的目標",
+   "label": "normal"
+  },
+  {
+   "source": "609c1555#seg4#att0",
+   "kind": "original",
+   "audio_sec": 2.24,
+   "transcribe_sec": 0.51,
+   "adopted": true,
+   "raw": "等一下要同意處理一下。",
+   "label": "normal"
+  },
+  {
+   "source": "12a9f4c0#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.37,
+   "transcribe_sec": 0.51,
+   "adopted": true,
+   "raw": "可能要重新說得比較清楚一點。",
+   "label": "normal"
+  },
+  {
+   "source": "66b486ec#seg5#att0",
+   "kind": "original",
+   "audio_sec": 2.92,
+   "transcribe_sec": 0.51,
+   "adopted": true,
+   "raw": "有一個樣子,但是這兩個樣子",
+   "label": "normal"
+  },
+  {
+   "source": "b3ff1560#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.98,
+   "transcribe_sec": 0.51,
+   "adopted": true,
+   "raw": "評估看看有沒有辦法把它移除。",
+   "label": "normal"
+  },
+  {
+   "source": "01d82eba#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.76,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "源頭的……",
+   "label": "normal"
+  },
+  {
+   "source": "6182c530#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.96,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "確定一下說",
+   "label": "normal"
+  },
+  {
+   "source": "165709cd#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.21,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "目前直接的感覺是",
+   "label": "normal"
+  },
+  {
+   "source": "cbd234ab#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.53,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "另外使用之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "459f38fd#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.66,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "太弱,所以我們有必要。",
+   "label": "normal"
+  },
+  {
+   "source": "30880595#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.69,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "這樣子的話 你有辦法 去",
+   "label": "normal"
+  },
+  {
+   "source": "ec40c55f#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.72,
+   "transcribe_sec": 0.5,
+   "adopted": true,
+   "raw": "所以說 可能要看一下問題出在哪裡。",
+   "label": "normal"
+  },
+  {
+   "source": "e5a1237f#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.15,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "我們的助手,這樣。",
+   "label": "normal"
+  },
+  {
+   "source": "1f9a8271#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.47,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "呈現方式。",
+   "label": "normal"
+  },
+  {
+   "source": "57f2972b#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.76,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "要去睡了 對 差不多。",
+   "label": "normal"
+  },
+  {
+   "source": "dd297ff6#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.96,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "像是……",
+   "label": "normal"
+  },
+  {
+   "source": "e7ca69cc#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.99,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "後選改進 跟",
+   "label": "normal"
+  },
+  {
+   "source": "609c1555#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.05,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "目前的狀況是怎麼樣,然後...",
+   "label": "normal"
+  },
+  {
+   "source": "f66f0aaf#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.15,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "有辦法快速的執行嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "900c4e64#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.24,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "模組程度要很高之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "a19d0785#seg2#att0",
+   "kind": "original",
+   "audio_sec": 2.47,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "進度,因為我們把",
+   "label": "normal"
+  },
+  {
+   "source": "2182a4cc#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.53,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "顏色的效果之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "5248aade#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.76,
+   "transcribe_sec": 0.49,
+   "adopted": true,
+   "raw": "然後第四個等待點的話",
+   "label": "normal"
+  },
+  {
+   "source": "54d48f1c#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.35,
+   "transcribe_sec": 0.48,
+   "adopted": true,
+   "raw": "規劃之類的。",
+   "label": "normal"
+  },
+  {
+   "source": "6b45ec00#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.38,
+   "transcribe_sec": 0.48,
+   "adopted": true,
+   "raw": "新的",
+   "label": "normal"
+  },
+  {
+   "source": "1f219dbf#seg6#att0",
+   "kind": "original",
+   "audio_sec": 1.76,
+   "transcribe_sec": 0.48,
+   "adopted": true,
+   "raw": "丟棄之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "3ad48db2#seg5#att0",
+   "kind": "original",
+   "audio_sec": 2.47,
+   "transcribe_sec": 0.48,
+   "adopted": true,
+   "raw": "可程式化 之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "44257bfd#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.06,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "虛擬。",
+   "label": "normal"
+  },
+  {
+   "source": "ce98ac97#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.09,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "然後...",
+   "label": "normal"
+  },
+  {
+   "source": "6346ac1b#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.22,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "敦促我一下",
+   "label": "normal"
+  },
+  {
+   "source": "b9038bad#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.89,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "然後 呃……",
+   "label": "normal"
+  },
+  {
+   "source": "9c427bf9#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.05,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "Fake Center 算是一個斷點嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "4eb32580#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.21,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "或者是對齊之類的。",
+   "label": "normal"
+  },
+  {
+   "source": "230fbd7e#seg4#att0",
+   "kind": "original",
+   "audio_sec": 2.5,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "這個部分好像是這樣子。",
+   "label": "normal"
+  },
+  {
+   "source": "f93645ed#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.5,
+   "transcribe_sec": 0.47,
+   "adopted": true,
+   "raw": "生物，其實，",
+   "label": "normal"
+  },
+  {
+   "source": "f7d345d0#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.16,
+   "transcribe_sec": 0.46,
+   "adopted": true,
+   "raw": "然後……",
+   "label": "normal"
+  },
+  {
+   "source": "8495451a#seg5#att0",
+   "kind": "original",
+   "audio_sec": 1.57,
+   "transcribe_sec": 0.46,
+   "adopted": true,
+   "raw": "策略之類的。",
+   "label": "normal"
+  },
+  {
+   "source": "20091cc7#seg6#att0",
+   "kind": "original",
+   "audio_sec": 1.89,
+   "transcribe_sec": 0.46,
+   "adopted": true,
+   "raw": "幀率流程而已嘛。",
+   "label": "normal"
+  },
+  {
+   "source": "4e6f9531#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.66,
+   "transcribe_sec": 0.46,
+   "adopted": true,
+   "raw": "好吧 那接下來就……",
+   "label": "normal"
+  },
+  {
+   "source": "63646352#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.64,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "偏好。",
+   "label": "normal"
+  },
+  {
+   "source": "bfe81bd8#seg0#att0",
+   "kind": "original",
+   "audio_sec": 0.93,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "然後",
+   "label": "normal"
+  },
+  {
+   "source": "af181110#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.16,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "用一個。",
+   "label": "normal"
+  },
+  {
+   "source": "8b6ad021#seg4#att0",
+   "kind": "original",
+   "audio_sec": 1.25,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "對 我……",
+   "label": "normal"
+  },
+  {
+   "source": "01bb0225#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.44,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "標準答案的感覺。",
+   "label": "normal"
+  },
+  {
+   "source": "cb643085#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.64,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "敘述上面。",
+   "label": "normal"
+  },
+  {
+   "source": "779956af#seg3#att0",
+   "kind": "original",
+   "audio_sec": 2.6,
+   "transcribe_sec": 0.45,
+   "adopted": true,
+   "raw": "是學長那邊的",
+   "label": "normal"
+  },
+  {
+   "source": "0374be9b#seg4#att0",
+   "kind": "original",
+   "audio_sec": 0.9,
+   "transcribe_sec": 0.44,
+   "adopted": true,
+   "raw": "呃……",
+   "label": "normal"
+  },
+  {
+   "source": "dd297ff6#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.12,
+   "transcribe_sec": 0.44,
+   "adopted": true,
+   "raw": "改成……",
+   "label": "normal"
+  },
+  {
+   "source": "7b1ef712#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.16,
+   "transcribe_sec": 0.44,
+   "adopted": true,
+   "raw": "所以",
+   "label": "normal"
+  },
+  {
+   "source": "d4348c97#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.79,
+   "transcribe_sec": 0.44,
+   "adopted": true,
+   "raw": "然後你說的 S5 階段",
+   "label": "normal"
+  },
+  {
+   "source": "246a1111#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.08,
+   "transcribe_sec": 0.43,
+   "adopted": true,
+   "raw": "時間對時的資訊嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "6346ac1b#seg1#att0",
+   "kind": "original",
+   "audio_sec": 2.44,
+   "transcribe_sec": 0.43,
+   "adopted": true,
+   "raw": "回答到的話 你要",
+   "label": "normal"
+  },
+  {
+   "source": "08e87514#seg5#att0",
+   "kind": "original",
+   "audio_sec": 2.92,
+   "transcribe_sec": 0.43,
+   "adopted": true,
+   "raw": "這樣子做起來會太大嗎?還是說",
+   "label": "normal"
+  },
+  {
+   "source": "bfe81bd8#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.87,
+   "transcribe_sec": 0.42,
+   "adopted": true,
+   "raw": "就是……",
+   "label": "normal"
+  },
+  {
+   "source": "82d6f5d2#seg1#att2",
+   "kind": "resegment",
+   "audio_sec": 1.41,
+   "transcribe_sec": 0.42,
+   "adopted": true,
+   "raw": "然後",
+   "label": "normal"
+  },
+  {
+   "source": "dbe0122b#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.48,
+   "transcribe_sec": 0.42,
+   "adopted": true,
+   "raw": "幫我將...",
+   "label": "normal"
+  },
+  {
+   "source": "8495451a#seg9#att0",
+   "kind": "original",
+   "audio_sec": 1.89,
+   "transcribe_sec": 0.42,
+   "adopted": true,
+   "raw": "之類的嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "36ea4c01#seg6#att0",
+   "kind": "original",
+   "audio_sec": 1.86,
+   "transcribe_sec": 0.41,
+   "adopted": true,
+   "raw": "就是 去壓力一下他們。",
+   "label": "normal"
+  },
+  {
+   "source": "eb69365b#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.06,
+   "transcribe_sec": 0.4,
+   "adopted": true,
+   "raw": "repo 裏面嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "609c1555#seg5#att0",
+   "kind": "original",
+   "audio_sec": 1.54,
+   "transcribe_sec": 0.4,
+   "adopted": true,
+   "raw": "轉移的部分。",
+   "label": "normal"
+  },
+  {
+   "source": "90fec6e7#seg7#att0",
+   "kind": "original",
+   "audio_sec": 2.15,
+   "transcribe_sec": 0.4,
+   "adopted": true,
+   "raw": "詞 是嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "93cd0ecd#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.28,
+   "transcribe_sec": 0.4,
+   "adopted": true,
+   "raw": "畢竟……",
+   "label": "normal"
+  },
+  {
+   "source": "f9384ae5#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.63,
+   "transcribe_sec": 0.39,
+   "adopted": true,
+   "raw": "幫我理解一下。",
+   "label": "normal"
+  },
+  {
+   "source": "9a25b737#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.8,
+   "transcribe_sec": 0.38,
+   "adopted": true,
+   "raw": "在意的數據。",
+   "label": "normal"
+  },
+  {
+   "source": "4d7b6581#seg2#att0",
+   "kind": "original",
+   "audio_sec": 1.57,
+   "transcribe_sec": 0.34,
+   "adopted": true,
+   "raw": "影片檔這樣子嗎?",
+   "label": "normal"
+  },
+  {
+   "source": "b5689512#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.6,
+   "transcribe_sec": 0.31,
+   "adopted": true,
+   "raw": "呃 不是吧 應該是",
+   "label": "normal"
+  },
+  {
+   "source": "66b486ec#seg4#att0",
+   "kind": "original",
+   "audio_sec": 0.8,
+   "transcribe_sec": 0.3,
+   "adopted": true,
+   "raw": "各自。",
+   "label": "normal"
+  },
+  {
+   "source": "82fc0fec#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.15,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "有辦法推線。",
+   "label": "normal"
+  },
+  {
+   "source": "c1f1d6db#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.22,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "安排一下。",
+   "label": "normal"
+  },
+  {
+   "source": "173939be#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.28,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "結束 夠了。",
+   "label": "normal"
+  },
+  {
+   "source": "8495451a#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.38,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "搜尋為名義。",
+   "label": "normal"
+  },
+  {
+   "source": "10076ae5#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.38,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "可能包括 但是",
+   "label": "normal"
+  },
+  {
+   "source": "de930811#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.54,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "詞表 詞表 詞表 詞表",
+   "label": "normal"
+  },
+  {
+   "source": "364bdc50#seg3#att6",
+   "kind": "resegment",
+   "audio_sec": 2.98,
+   "transcribe_sec": 0.27,
+   "adopted": true,
+   "raw": "呃 如果有一些特殊狀況你需要",
+   "label": "normal"
+  },
+  {
+   "source": "b5689512#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.61,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "你要把",
+   "label": "normal"
+  },
+  {
+   "source": "7b1ef712#seg3#att0",
+   "kind": "original",
+   "audio_sec": 0.71,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "然後",
+   "label": "normal"
+  },
+  {
+   "source": "16409588#seg3#att0",
+   "kind": "original",
+   "audio_sec": 0.74,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "呃……",
+   "label": "normal"
+  },
+  {
+   "source": "39141183#seg2#att0",
+   "kind": "original",
+   "audio_sec": 0.96,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "我們……",
+   "label": "normal"
+  },
+  {
+   "source": "dae5a3b7#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.25,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "就是……",
+   "label": "normal"
+  },
+  {
+   "source": "0fa537dd#seg0#att0",
+   "kind": "original",
+   "audio_sec": 1.99,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "總共八個升級這樣。",
+   "label": "normal"
+  },
+  {
+   "source": "e14718d7#seg0#att0",
+   "kind": "original",
+   "audio_sec": 2.34,
+   "transcribe_sec": 0.26,
+   "adopted": true,
+   "raw": "等一下 你到底有沒有給我",
+   "label": "normal"
+  },
+  {
+   "source": "bdec99c3#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.71,
+   "transcribe_sec": 0.25,
+   "adopted": true,
+   "raw": "清楚。",
+   "label": "normal"
+  },
+  {
+   "source": "01d82eba#seg4#att0",
+   "kind": "original",
+   "audio_sec": 0.74,
+   "transcribe_sec": 0.25,
+   "adopted": true,
+   "raw": "都會改。",
+   "label": "normal"
+  },
+  {
+   "source": "779956af#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.96,
+   "transcribe_sec": 0.25,
+   "adopted": true,
+   "raw": "我的",
+   "label": "normal"
+  },
+  {
+   "source": "364bdc50#seg3#att4",
+   "kind": "resegment",
+   "audio_sec": 2.56,
+   "transcribe_sec": 0.25,
+   "adopted": true,
+   "raw": "邏輯之類的 反正",
+   "label": "normal"
+  },
+  {
+   "source": "c4e25878#seg1#att0",
+   "kind": "original",
+   "audio_sec": 0.68,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "因為……",
+   "label": "normal"
+  },
+  {
+   "source": "84097d39#seg0#att4",
+   "kind": "resegment",
+   "audio_sec": 0.74,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "啊不對 也是",
+   "label": "normal"
+  },
+  {
+   "source": "482c2cce#seg1#att5",
+   "kind": "resegment",
+   "audio_sec": 0.87,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "中文，",
+   "label": "normal"
+  },
+  {
+   "source": "e08cab2a#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.0,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "刪除好了。",
+   "label": "normal"
+  },
+  {
+   "source": "0374be9b#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.0,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "確實",
+   "label": "normal"
+  },
+  {
+   "source": "56c61b74#seg3#att0",
+   "kind": "original",
+   "audio_sec": 1.02,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "不同的方法。",
+   "label": "normal"
+  },
+  {
+   "source": "482c2cce#seg1#att2",
+   "kind": "resegment",
+   "audio_sec": 1.06,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "呃...",
+   "label": "normal"
+  },
+  {
+   "source": "d7e65f73#seg5#att0",
+   "kind": "original",
+   "audio_sec": 1.19,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "但是……",
+   "label": "normal"
+  },
+  {
+   "source": "20091cc7#seg9#att0",
+   "kind": "original",
+   "audio_sec": 1.32,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "像是說",
+   "label": "normal"
+  },
+  {
+   "source": "364bdc50#seg3#att7",
+   "kind": "resegment",
+   "audio_sec": 1.44,
+   "transcribe_sec": 0.24,
+   "adopted": true,
+   "raw": "安排",
+   "label": "normal"
+  },
+  {
+   "source": "0374be9b#seg3#att0",
+   "kind": "original",
+   "audio_sec": 0.71,
+   "transcribe_sec": 0.23,
+   "adopted": true,
+   "raw": "就是……",
+   "label": "normal"
+  },
+  {
+   "source": "20fe1564#seg1#att0",
+   "kind": "original",
+   "audio_sec": 1.12,
+   "transcribe_sec": 0.22,
+   "adopted": true,
+   "raw": "然後",
+   "label": "normal"
+  }
+ ]
+}

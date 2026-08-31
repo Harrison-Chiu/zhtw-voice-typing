@@ -335,6 +335,10 @@ class HistoryStore:
                     "end_sample": row["end_sample"],
                     "fallback": bool(segment_metadata.get("fallback")),
                     "fallback_exhausted": bool(segment_metadata.get("fallback_exhausted")),
+                    "rejected": bool(
+                        segment_metadata.get("rejected")
+                        or segment_metadata.get("rejected_sub_segments")
+                    ),
                     "audio_file": audio_path.name if audio_path else "",
                     "_audio_url": audio_url,
                     "_session_dir": str(audio_path.parent) if audio_path else "",

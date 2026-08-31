@@ -1107,6 +1107,17 @@ class TrayApp:
                     source="observed",
                     reason="all configured resegmentation thresholds remained slow",
                 )
+            if stat.get("rejected") or stat.get("rejected_sub_segments"):
+                self._history_store.add_corpus_label(
+                    job_id,
+                    "hallucination-rejected",
+                    segment_index=index,
+                    source="observed",
+                    reason=stat.get(
+                        "rejected_reason",
+                        f"dropped {stat.get('rejected_sub_segments', 0)} still-slow sub-segments",
+                    ),
+                )
         if result.status_events or result.gap_events:
             self._history_store.add_corpus_label(
                 job_id,

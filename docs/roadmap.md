@@ -284,12 +284,29 @@ VAD／capture／gap metadata、error history、correction candidate、corpus lab
 
 `min_hallucination_audio_sec=3.0` 的歷史理由則較窄：32 段實驗中一個 2.15 秒的正常「呃……」
 花 2.22 秒，為避免該假陽性而加入短音訊排除。但後續真實 log 已出現 0.26 秒音訊轉錄 18.32
-秒並輸出 132 字等明顯異常，因此「3 秒以下一律不檢查」必須重驗。先從現有短段 log 建立測試，
-再決定附加訊號或分級門檻，不直接用新的直覺規則取代。
+秒並輸出 132 字等明顯異常，因此「3 秒以下一律不檢查」必須重驗。
+
+**2026-09-01 已處理。** 依上述要求先建測試再改規則：`tests/data/short_segment_cases.json`
+凍結 history log 中全部 143 筆 < 3 秒的辨識嘗試並人工標註（產生器
+`experiments/extract_short_segment_cases.py`）。這份資料上，判為可用輸出的段最慢 1.24 秒，
+7 筆明顯幻覺中 6 筆 >= 1.57 秒，既有 1.5 秒門檻零誤殺、單一漏抓是 0.80 秒→1.03 秒的
+`Duh.`（延遲落在正常範圍，需另一種訊號才抓得到，暫列已知限制）。因此採分級門檻而非新訊號：
+`min_hallucination_audio_sec` 不再關閉偵測，改為切分「還救得回來／救不回來」——短於它的段
+仍跑 RMS 正規化，但沒有第二個靜音間隙可切，重切救不了，仍偏慢就捨棄文字並保留證據。
+以真實音訊重跑（`experiments/replay_short_segment_hallucination.py`）：0.29 秒子段 3.36 秒、
+0.52 秒子段 3.54 秒，輸出皆與語音無關；幻覺文字跨 session 不同，延遲訊號穩定重現。
 
 現有 fallback 在所有切分門檻用盡後，即使最後仍有子段超過 1.5 秒，也會回傳並採用最後一組
 結果。下一版必須把 `fallback_succeeded` 與 `fallback_exhausted` 分開；後者保留原始音訊、
 各次嘗試與可見警告，不可把「已執行 fallback」誤記成「問題已解決」。
+
+**2026-09-01 已處理。** 兩個旗標本就分開記錄，缺的是「用盡之後怎麼辦」：仍偏慢且短於
+`min_hallucination_audio_sec` 的子段不再併入輸出（`adopted=False` + `rejected=True`），
+原音訊、每次嘗試與 CLI 警告照舊保留，並寫入 `hallucination-rejected` corpus label
+（有標籤的 job 不受 2 GiB 容量護欄淘汰，證據不會被回收）。較長的偏慢子段仍然採用——
+丟掉數十秒真實內容的代價高於留下一段可疑文字，這條界線刻意只畫在「沒有其他救法」的短段。
+順帶修正 fallback 段在 `segments` 表 `processed_text` 為 NULL、log 檢視器顯示成
+「30 秒音訊、文字空白」的問題。
 
 音訊格式現況與下一步：
 
