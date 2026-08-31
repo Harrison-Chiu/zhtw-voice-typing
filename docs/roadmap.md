@@ -85,6 +85,12 @@ SenseVoice 等新引擎。既有模型橫評已收斂，沒有新需求或 A 線
 3. Codec 嚴格逐字交叉測試；先處理 production fallback 不決定性。
 4. 只有通過 non-inferiority gate 才取代 Silero；否則保留 Silero 並優先評估 ONNX。
 
+2026-09-01：ONNX 評估完成並已上線為預設（`vad.backend`）。這是同一份 Silero v5 權重換 runtime，
+不是換 VAD，因此不套用上述 non-inferiority gate；改用的理由是啟動延遲（錄音路徑不再 import
+torch，tray 到「可錄音」約 0.4s）。等價性證據見 `experiments/compare_vad_backends.py` 與
+`experiments/results/vad_backend_compare_*.json`：498 秒實際音檔、逐窗機率最大差 4.7e-06、
+門檻決策零翻轉、切段邊界完全相同。E0–E6 的替代演算法評估不受影響，仍待執行。
+
 詳細規格：`docs/vad-experiment-plan.md`。
 
 ### D — 啟動／Tray／生命週期

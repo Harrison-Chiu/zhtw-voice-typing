@@ -4,6 +4,13 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 啟動延遲：VAD 改用 ONNX Runtime 後端（`vad.backend`，預設 `onnx`），錄音路徑完全不 import torch；
+  tray 從啟動到「可錄音」由數秒～數十秒降到約 0.4s（開發機、autostart 模式實測）`(pending)`
+- 等價性驗證：`experiments/compare_vad_backends.py` 在 498 秒實際測試音檔（含 8 分鐘長檔）比對
+  torch JIT 與 ONNX，逐窗機率最大差 4.7e-06、門檻決策零翻轉、`StreamingVAD` 切段邊界完全相同
+  （長檔 32/32 段），推論本身也快約 2.2×；ONNX 模型載入 0.13s vs torch hub 2.28s `(pending)`
+- 卸載路徑：`torch.cuda.empty_cache()` 改為只在 torch 已載入時才呼叫，避免 onnx 後端為了釋放
+  「從未配置過的 PyTorch 記憶體」而付出完整 torch import 成本 `(pending)`
 - 啟動可用性：快捷鍵監聽移到 `import torch` 與 VAD 載入之前註冊，啟動期間按下不再靜默無反應，
   改回報「啟動中（已 N 秒）」或既有啟動錯誤（3 秒節流）；錄音路徑仍需 VAD，故此階段只回報進度、
   不錄音 `(pending)`

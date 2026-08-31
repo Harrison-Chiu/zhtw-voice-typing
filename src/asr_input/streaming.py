@@ -13,10 +13,10 @@ from collections.abc import Callable
 from dataclasses import asdict, is_dataclass
 
 import numpy as np
-import torch
 
 from asr_input.asr.base import ASREngine
 from asr_input.audio.streaming_vad import StreamingVAD
+from asr_input.audio.vad_backend import VadModel
 from asr_input.output.session_log import SessionLogger
 from asr_input.processing.pipeline import ProcessingPipeline
 
@@ -28,7 +28,7 @@ class StreamingSession:
         self,
         engine: ASREngine,
         pipeline: ProcessingPipeline,
-        vad_model: torch.jit.ScriptModule,
+        vad_model: VadModel,
         sample_rate: int = 16000,
         silence_trigger_ms: int = 1000,
         silence_min_ms: int = 300,
