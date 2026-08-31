@@ -181,6 +181,12 @@ D 線除單元測試外，固定保留以下操作情境作 Windows 實機驗收
 7. 關閉與單一實例：錄音中／辨識中／待命時分別退出，不留 listener、不重複啟動，也不再出現
    pystray setup timeout 或 CFFI callback 視窗。
 
+2026-09-01 補充（啟動延遲歸因）：「模型未 ready 仍可立即錄音」只延後了 Whisper，未延後
+PyTorch 與 Silero VAD；快捷鍵原本要等兩者載完才註冊，實測冷啟動主要成本在 `import torch`
+（開發機長時間閒置後首次 18.1s、OS 檔案快取熱時 1.7s）。已先讓快捷鍵提前註冊並在啟動期間
+回報進度，並補齊各階段計時；要真正縮短「按下就在錄」的等待，需把錄音路徑與 torch 解耦
+（Silero ONNX，見 C 線）或改為先緩衝音訊、VAD ready 後再接上切句器。
+
 目前進度（2026-08-07）：Tray-first 啟動、lazy model、即時錄音與途中接回 live ASR、單一 FIFO
 worker、最近結果、手動／idle 卸載、單一實例、pending／failed 重啟復原、麥克風事件記錄，以及
 Tray／observer 例外隔離均已實作並有分層測試。實機已確認快速出圖、冷啟動可立即錄音、live
@@ -325,7 +331,8 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 猜測需求：
 
 - **留在 D 線本輪收尾**：實作 `manual`／`autostart` 啟動模式；終端與桌面捷徑一般啟動預載
-  Whisper，lazy 只由未來 Windows autostart 明確指定；記錄每次模型載入精確耗時；完成接近
+  Whisper，lazy 只由未來 Windows autostart 明確指定；~~記錄每次模型載入精確耗時~~（2026-09-01
+  完成：啟動橫幅時間戳、`import torch`／VAD／可錄音就緒／Whisper 載入各自計時）；完成接近
   15×15 的滿版主圓、同色系麥克風動態、大型中央符號、queue 點、白圈／警告／錯誤獨立疊加與
   所有狀態組合測試；
   再做多 job FIFO、麥克風靜音／拔除與異常關閉復原的受控 Windows 驗收。

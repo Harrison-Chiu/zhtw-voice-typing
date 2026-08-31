@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from collections import deque
+from datetime import datetime
 from typing import Any
 
 import pystray
@@ -256,6 +257,11 @@ class TrayApp:
         self._tray: pystray.Icon | None = None
         self._stop_feedback = False
         self._setup_error: str | None = None
+        # The hotkey listener starts before the capture path exists, so presses
+        # during startup must be answered instead of raising or being ignored.
+        self._capture_ready = False
+        self._startup_started_at: float | None = None
+        self._startup_notice_at = 0.0
 
     def run(self) -> None:
         menu = pystray.Menu(
@@ -320,13 +326,16 @@ class TrayApp:
             _silent_notify(self._tray, self._setup_error, "ASR Input 啟動失敗")
 
     def _initialize(self) -> None:
-        # Heavy imports belong here: pystray has already made the icon visible.
-        import torch
+        self._startup_started_at = time.perf_counter()
+        print(
+            f"=== 啟動 {datetime.now():%Y-%m-%d %H:%M:%S} — 模式 {self._startup_mode} ===",
+            flush=True,
+        )
 
-        from asr_input.asr import build_engine
+        # Config parsing is pure YAML.  Reading it before any heavy import lets
+        # the hotkey listener start while PyTorch and the VAD model still load,
+        # so a press during startup gets an explicit answer instead of silence.
         from asr_input.config import load_config
-        from asr_input.main import build_pipeline
-        from asr_input.output.clipboard import ClipboardOutput
 
         self._config = load_config()
         asr_cfg = self._config["asr"]
@@ -363,6 +372,28 @@ class TrayApp:
         self._recent_results_limit = history_cfg.get("recent_results_limit", 20)
         self._recent_menu_limit = history_cfg.get("tray_recent_limit", 5)
 
+        self._listen_hotkey()
+        print(
+            f"快捷鍵已註冊: {self._hotkey_label}；錄音就緒前按下會回報啟動進度",
+            flush=True,
+        )
+
+        # Heavy imports belong here: the tray icon is visible and the hotkey now
+        # answers.  `import torch` alone dominates a cold start and is highly
+        # cache-dependent -- measured on the dev machine 2026-09-01: 18.1s for
+        # the first import after a long idle, 1.7s once the OS file cache was
+        # warm.  It is timed on its own so future launches record which case
+        # they hit instead of leaving the largest cost untimed.
+        torch_t0 = time.perf_counter()
+        import torch
+
+        torch_sec = time.perf_counter() - torch_t0
+        print(f"[計時] import torch: {torch_sec:.1f}s", flush=True)
+
+        from asr_input.asr import build_engine
+        from asr_input.main import build_pipeline
+        from asr_input.output.clipboard import ClipboardOutput
+
         self._engine = build_engine(asr_cfg, vad_cfg=None)
         self._pipeline = build_pipeline(self._config, include_output=False)
         self._clipboard = ClipboardOutput()
@@ -383,11 +414,16 @@ class TrayApp:
         print("VAD 模型載入完成!", flush=True)
 
         self._recording = self._build_recording_session()
+        self._capture_ready = True
         recovery_effects = self._restore_pending_jobs()
-        print(f"[計時] 載 CPU VAD: {vad_sec:.1f}s / Whisper: 尚未載入", flush=True)
+        ready_sec = time.perf_counter() - self._startup_started_at
+        print(
+            f"[計時] import torch: {torch_sec:.1f}s / 載 CPU VAD: {vad_sec:.1f}s / "
+            f"可錄音就緒: {ready_sec:.1f}s / Whisper: 尚未載入",
+            flush=True,
+        )
 
         self._refresh_state()
-        print(f"快捷鍵: {self._hotkey_label}（錄音切換）", flush=True)
         model_message = (
             "Whisper 正在背景預載"
             if self._startup_mode == "manual"
@@ -483,6 +519,9 @@ class TrayApp:
     def _toggle(self) -> None:
         if self._closing:
             return
+        if not self._capture_ready:
+            self._notify_startup_pending()
+            return
         with self._lock:
             if self._lifecycle.snapshot.capture is CaptureState.RECORDING:
                 effects = self._lifecycle.end_capture()
@@ -492,6 +531,30 @@ class TrayApp:
                 effects = self._lifecycle.begin_capture()
         self._refresh_state()
         self._execute_effects(effects)
+
+    def _notify_startup_pending(self) -> None:
+        """Answer a hotkey press that arrives before the capture path exists.
+
+        The listener is deliberately live during startup so the user learns why
+        nothing is recording; without this the press is silently dropped and the
+        app looks broken.  Repeated presses are throttled so a held or retried
+        chord does not queue a burst of notifications.
+        """
+        now = time.monotonic()
+        if now - self._startup_notice_at < 3.0:
+            return
+        self._startup_notice_at = now
+        if self._setup_error:
+            message = f"啟動失敗，尚無法錄音：{self._setup_error}"
+        else:
+            elapsed = (
+                time.perf_counter() - self._startup_started_at
+                if self._startup_started_at is not None
+                else 0.0
+            )
+            message = f"啟動中（已 {elapsed:.0f} 秒），錄音尚未就緒；就緒時會另行通知。"
+        print(message, flush=True)
+        _silent_notify(self._tray, message, "ASR Input")
 
     def _on_toggle_model(self, icon, item) -> None:
         if self._setup_error:
@@ -850,18 +913,24 @@ class TrayApp:
             message = f"{type(exc).__name__}: {exc}"
             with self._lock:
                 self._lifecycle.model_failed(generation, message)
+            print(f"[計時] Whisper 載入失敗於 {self._model_load_elapsed():.1f}s", flush=True)
             self._stop_model_status_timer()
             self._refresh_state()
             _silent_notify(self._tray, message, "ASR Input 模型載入失敗；可重試")
             return
         with self._lock:
             effects = self._lifecycle.model_ready(generation)
+        load_sec = self._model_load_elapsed()
         self._stop_model_status_timer()
-        print("Whisper 模型載入完成", flush=True)
+        print(f"Whisper 模型載入完成 [計時] {load_sec:.1f}s", flush=True)
         self._refresh_state()
         self._execute_effects(effects)
 
         self._maybe_start_live_transcription()
+
+    def _model_load_elapsed(self) -> float:
+        started = self._model_load_started_at
+        return 0.0 if started is None else time.monotonic() - started
 
     def _unload_model(self, generation: int) -> None:
         import torch

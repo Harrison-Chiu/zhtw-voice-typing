@@ -4,7 +4,7 @@ import io
 import sys
 import time
 
-print("正在載入 PyTorch（首次可能需要 30-60 秒）...", flush=True)
+print("正在載入語音模組（首次可能需要 30-60 秒）...", flush=True)
 
 from asr_input.asr import build_engine  # noqa: E402
 from asr_input.audio.capture import AudioSource, MicrophoneCapture  # noqa: E402
@@ -16,7 +16,7 @@ from asr_input.processing.pipeline import ProcessingPipeline  # noqa: E402
 from asr_input.processing.punct_norm import PunctuationNormalizer  # noqa: E402
 from asr_input.processing.tw_terms import TaiwanTermReplacer  # noqa: E402
 
-print("PyTorch 載入完成。", flush=True)
+print("語音模組載入完成。", flush=True)
 
 
 def _ensure_utf8_stdout() -> None:

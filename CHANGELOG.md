@@ -3,6 +3,16 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-09-01
+- 啟動可用性：快捷鍵監聽移到 `import torch` 與 VAD 載入之前註冊，啟動期間按下不再靜默無反應，
+  改回報「啟動中（已 N 秒）」或既有啟動錯誤（3 秒節流）；錄音路徑仍需 VAD，故此階段只回報進度、
+  不錄音 `(pending)`
+- 啟動計時：新增帶時間戳的啟動橫幅、`import torch` 單獨計時、「可錄音就緒」總耗時與每次 Whisper
+  載入／載入失敗的精確耗時，補上 roadmap D「記錄每次模型載入精確耗時」`(pending)`
+- 啟動診斷：實測 `import torch` 為冷啟動主要成本且高度依賴 OS 檔案快取（2026-09-01 開發機：
+  長時間閒置後首次 18.1s、快取熱時 1.7s）；`main.py` 匯入訊息由「正在載入 PyTorch」改為
+  「正在載入語音模組」，因 tray 是先 `import torch` 才匯入 `main`，原訊息出現時 torch 早已載完 `(pending)`
+
 ## 2026-08-18
 - 雲端實驗：加入預設停用的 OpenRouter STT adapter，key 由環境變數或 Windows Credential Manager 安全讀取，預設要求 ZDR，並記錄 usage／cost `(pending)`
 - 模型評測：補跑 Qwen3-ASR 0.6B／1.7B 與 faster-whisper 五段同場比較；FW 維持預設，1.7B 保留研究選項，0.6B 不採用 `(pending)`

@@ -55,6 +55,48 @@ def test_hotkey_listener_starts_without_blocking_setup(monkeypatch):
     assert app._keyboard_listener is listener
 
 
+def test_toggle_before_capture_is_ready_reports_progress_instead_of_recording(monkeypatch):
+    """A press during startup must explain itself, not fail or vanish silently."""
+    app = TrayApp()
+    notices = []
+    monkeypatch.setattr(
+        tray, "_silent_notify", lambda icon, message, title="": notices.append(message)
+    )
+
+    app._toggle()
+
+    assert app._lifecycle.snapshot.capture is CaptureState.IDLE
+    assert len(notices) == 1
+    assert "啟動中" in notices[0]
+
+
+def test_startup_notice_is_throttled_for_repeated_presses(monkeypatch):
+    app = TrayApp()
+    notices = []
+    monkeypatch.setattr(
+        tray, "_silent_notify", lambda icon, message, title="": notices.append(message)
+    )
+
+    app._toggle()
+    app._toggle()
+    app._toggle()
+
+    assert len(notices) == 1
+
+
+def test_startup_notice_surfaces_setup_error(monkeypatch):
+    app = TrayApp()
+    app._setup_error = "RuntimeError: boom"
+    notices = []
+    monkeypatch.setattr(
+        tray, "_silent_notify", lambda icon, message, title="": notices.append(message)
+    )
+
+    app._toggle()
+
+    assert "RuntimeError: boom" in notices[0]
+
+
 def test_hotkey_callback_error_does_not_prevent_the_next_toggle(monkeypatch):
     app = TrayApp()
     toggles = []
