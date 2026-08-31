@@ -208,7 +208,6 @@ class TrayApp:
         self._hotkey_label = DEFAULT_HOTKEY.upper()
         self._silence_trigger_ms = 1000
         self._verbose = False
-        self._cuda_warmup = False
         self._idle_unload_sec = 30 * 60
         # Capacity policy is deferred until codec/retention measurements.
         self._queue_budget = AudioQueueBudget(float("inf"))
@@ -350,7 +349,6 @@ class TrayApp:
         streaming_cfg = self._config.get("streaming", {})
         self._silence_trigger_ms = streaming_cfg.get("silence_trigger_ms", 1000)
         self._verbose = streaming_cfg.get("verbose", False)
-        self._cuda_warmup = self._config.get("startup", {}).get("cuda_warmup", False)
         self._idle_unload_sec = (
             self._config.get("lifecycle", {}).get("idle_unload_minutes", 30) * 60
         )

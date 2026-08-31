@@ -92,11 +92,3 @@ hotkey:
 
 lifecycle:
   idle_unload_minutes: 30   # 無錄音、排隊工作或辨識時，多久後自動釋放 ASR 模型
-
-startup:
-  # PyTorch CUDA 暖機：啟動時 torch.zeros(1).to(cuda) 觸發 CUDA context 初始化。
-  # 預設關閉（空轉）：目前 ASR 走 CTranslate2（非 PyTorch）、Silero VAD 跑 CPU，
-  # 進程內沒有任何 PyTorch GPU 工作會用到這個 context，暖機是純空轉（實測 ~0.1s，
-  # 無害但無益）。保留開關給未來：若改用 PyTorch-based ASR 引擎、或讓 VAD 上 GPU，
-  # 開啟可把「首次 CUDA 初始化」提前到啟動階段，縮短首次推論延遲。
-  cuda_warmup: false

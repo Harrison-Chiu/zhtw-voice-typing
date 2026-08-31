@@ -4,6 +4,9 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 移除 `startup.cuda_warmup`：暖機呼叫本身早已被拿掉，只剩 `tray.py` 把設定讀進 `self._cuda_warmup`
+  卻無人使用，是死設定；2026-09-01 VAD 改走 ONNX、錄音路徑不再 import torch 後，「留給未來 PyTorch
+  引擎或 GPU VAD」的理由也更弱。config.yaml 的 `startup:` 區塊與說明一併刪除 `(pending)`
 - 啟動延遲：VAD 改用 ONNX Runtime 後端（`vad.backend`，預設 `onnx`），錄音路徑完全不 import torch；
   tray 從啟動到「可錄音」由數秒～數十秒降到約 0.4s（開發機、autostart 模式實測）`(pending)`
 - 等價性驗證：`experiments/compare_vad_backends.py` 在 498 秒實際測試音檔（含 8 分鐘長檔）比對
