@@ -29,6 +29,13 @@ asr:
   # zdr: true
 
 vad:
+  # backend: onnx | torch — 兩者跑同一份 Silero v5 權重（silero-vad 套件同時附
+  # silero_vad.jit 與 silero_vad.onnx）。onnx 走 ONNX Runtime，錄音路徑完全不需要
+  # import torch；torch 在本機冷啟動是最大單項成本（2026-09-01 實測：長時間閒置後
+  # 首次 18.1s、OS 檔案快取熱時 1.7s），改用 onnx 後 tray 到「可錄音」約 0.4s。
+  # 2026-09-01 起預設 onnx：experiments/compare_vad_backends.py 在 498 秒實際測試音檔上
+  # 兩者逐窗機率最大差 4.7e-06、門檻決策零翻轉、切段邊界完全相同。torch 保留為退路。
+  backend: onnx
   enabled: true
   threshold: 0.5                # VAD 信心門檻（0-1，越高越嚴格）
   min_speech_duration_ms: 250   # 最短語音段（ms）

@@ -225,6 +225,7 @@ class TrayApp:
         self._clipboard: Any = None
         self._history_store: Any = None
         self._vad_model: Any = None
+        self._vad_backend = "onnx"
         self._recording: Any = None
         self._transcriber: Any = None
         self._live_transcriber: Any = None
@@ -335,6 +336,7 @@ class TrayApp:
         # Config parsing is pure YAML.  Reading it before any heavy import lets
         # the hotkey listener start while PyTorch and the VAD model still load,
         # so a press during startup gets an explicit answer instead of silence.
+        from asr_input.audio.vad_backend import build_vad_model
         from asr_input.config import load_config
 
         self._config = load_config()
@@ -379,16 +381,20 @@ class TrayApp:
         )
 
         # Heavy imports belong here: the tray icon is visible and the hotkey now
-        # answers.  `import torch` alone dominates a cold start and is highly
-        # cache-dependent -- measured on the dev machine 2026-09-01: 18.1s for
-        # the first import after a long idle, 1.7s once the OS file cache was
-        # warm.  It is timed on its own so future launches record which case
-        # they hit instead of leaving the largest cost untimed.
-        torch_t0 = time.perf_counter()
-        import torch
+        # answers.  With the torch VAD backend `import torch` dominates a cold
+        # start and is highly cache-dependent -- measured on the dev machine
+        # 2026-09-01: 18.1s for the first import after a long idle, 1.7s once
+        # the OS file cache was warm.  The ONNX backend skips it entirely, so
+        # the cost is timed here to record which case each launch actually hit.
+        vad_cfg = self._config.get("vad", {})
+        self._vad_backend = vad_cfg.get("backend", "onnx")
+        torch_sec = 0.0
+        if self._vad_backend == "torch":
+            torch_t0 = time.perf_counter()
+            import torch  # noqa: F401
 
-        torch_sec = time.perf_counter() - torch_t0
-        print(f"[計時] import torch: {torch_sec:.1f}s", flush=True)
+            torch_sec = time.perf_counter() - torch_t0
+            print(f"[計時] import torch: {torch_sec:.1f}s", flush=True)
 
         from asr_input.asr import build_engine
         from asr_input.main import build_pipeline
@@ -406,10 +412,9 @@ class TrayApp:
         if saved_idle_minutes is not None:
             self._idle_unload_sec = int(saved_idle_minutes) * 60
 
-        print("載入 VAD 模型...", flush=True)
+        print(f"載入 VAD 模型（{self._vad_backend}）...", flush=True)
         t0 = time.perf_counter()
-        model, _ = torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True)
-        self._vad_model = model
+        self._vad_model = build_vad_model(vad_cfg)
         vad_sec = time.perf_counter() - t0
         print("VAD 模型載入完成!", flush=True)
 
@@ -417,8 +422,13 @@ class TrayApp:
         self._capture_ready = True
         recovery_effects = self._restore_pending_jobs()
         ready_sec = time.perf_counter() - self._startup_started_at
+        torch_note = (
+            f"import torch: {torch_sec:.1f}s"
+            if self._vad_backend == "torch"
+            else "import torch: 略過"
+        )
         print(
-            f"[計時] import torch: {torch_sec:.1f}s / 載 CPU VAD: {vad_sec:.1f}s / "
+            f"[計時] {torch_note} / 載 CPU VAD（{self._vad_backend}）: {vad_sec:.1f}s / "
             f"可錄音就緒: {ready_sec:.1f}s / Whisper: 尚未載入",
             flush=True,
         )
@@ -933,12 +943,18 @@ class TrayApp:
         return 0.0 if started is None else time.monotonic() - started
 
     def _unload_model(self, generation: int) -> None:
-        import torch
-
         try:
             self._engine.unload()
-            if self._device != "cpu" and torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # `empty_cache()` only releases PyTorch's caching allocator.  With
+            # the ONNX VAD backend nothing in this process ever allocates
+            # through torch, so importing it here would pay the full cold-start
+            # import cost to free nothing.  faster-whisper frees its own
+            # CTranslate2 memory in `engine.unload()` either way.
+            if self._device != "cpu" and "torch" in sys.modules:
+                import torch
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
         except Exception as exc:
             message = f"{type(exc).__name__}: {exc}"
             with self._lock:

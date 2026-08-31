@@ -10,9 +10,9 @@ import sys
 from collections.abc import Callable
 
 import numpy as np
-import torch
 
 from asr_input.audio.events import VADDecisionEvent
+from asr_input.audio.vad_backend import VadModel, as_vad_model
 
 
 class StreamingVAD:
@@ -60,7 +60,7 @@ class StreamingVAD:
         self._on_decision_event = on_decision_event
         self._total_fed_samples = 0
 
-        self._model: torch.jit.ScriptModule | None = None
+        self._model: VadModel | None = None
 
         # Buffering state
         self._pending: np.ndarray = np.array([], dtype=np.float32)
@@ -75,8 +75,10 @@ class StreamingVAD:
         self._pre_probs: list[float] = []
         self._segment_count = 0
 
-    def load(self, model: torch.jit.ScriptModule) -> None:
-        self._model = model
+    def load(self, model) -> None:
+        """Accept a `VadModel` backend, or a bare torch JIT model for callers
+        that still hand over `torch.hub.load(...)` output directly."""
+        self._model = as_vad_model(model)
 
     def reset(self) -> None:
         """Reset state for a new streaming session."""
@@ -202,8 +204,7 @@ class StreamingVAD:
         sys.stdout.flush()
 
     def _process_window(self, window: np.ndarray) -> None:
-        tensor = torch.from_numpy(window)
-        prob = self._model(tensor, self._sample_rate).item()
+        prob = self._model(window, self._sample_rate)
         self._apply_vad_decision(prob, window)
 
     def _apply_vad_decision(self, prob: float, window: np.ndarray) -> None:
