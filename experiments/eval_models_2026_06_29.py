@@ -43,7 +43,7 @@ CANDIDATE_MODEL = "JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW"
 AUDIO_FILES = [
     "中英錄音測試.m4a",
     "機器人展示，語音轉錄測試.m4a",
-    "簡報日.m4a",
+    "簡報錄音_8分鐘.m4a",
 ]
 
 SIMPLIFIED_SAMPLE = set("软视启发这说应话时题问为业产权术语种类别样东马达机现们个")

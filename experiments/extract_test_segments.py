@@ -16,7 +16,7 @@ import numpy as np
 import soundfile as sf
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = PROJECT_ROOT / "data/test_audio/簡報日.m4a"
+SOURCE = PROJECT_ROOT / "data/test_audio/簡報錄音_8分鐘.m4a"
 OUT_DIR = PROJECT_ROOT / "data/test_audio/segments"
 SR = 16000
 

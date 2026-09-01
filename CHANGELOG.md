@@ -4,12 +4,28 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 目錄職責歸位：`scripts/` 只留可重複使用的工具（測試驅動、log 工具、Windows 啟動器），
+  三支一次性模型評測 `test_funasr_nano.py`／`test_funasr_nano_v2.py`／`test_hf_whisper_zhtw.py`
+  移入 `experiments/`。原本同一個實驗的腳本被切在兩個目錄（CLAUDE.md 的決策條目就同時引用
+  `scripts/` 與 `experiments/` 下的檔案），引用已一併更新 `(pending)`
+- 刪除 `scripts/test_full.py`：傳 `prompt=` 給 `QwenASREngine`，但該類別的參數是 `context`，
+  執行即 `TypeError`；另寫死 Qwen 1.7B 與已改掉的 `s2twp`，功能由 `scripts/test_audio_file.py`
+  取代（它驅動真正的 `main()`），且無任何文件引用 `(pending)`
+- 修死設定 `processing.tw_dict_path`：先前從未被讀，路徑寫死在 `tw_terms.py`。
+  改由 `build_pipeline()` 傳入（相對專案根目錄，未設定則用內建預設），
+  並補兩個測試釘住這條線，避免又退化成沒人驗證的設定 `(pending)`
+- 新增 `.gitattributes`：repo 內統一存 LF，`.bat`／`.vbs`／`.ps1` 強制 checkout 成 CRLF。
+  先前換行只靠各機器的 `core.autocrlf`，在只有 Windows 時可行；為 macOS 支援預先寫死規則 `(pending)`
+- 測試音檔更名為 `data/test_audio/簡報錄音_8分鐘.m4a`：去識別化後的 `簡報日` 單獨看語意不明，
+  改為與其他測試檔一致的內容描述式命名。此次僅動工作區與本機檔案，不再改寫歷史 `(pending)`
+- 修正 `scripts/test_streaming.py` docstring 的輸出路徑（`data/` → `experiments/results/`）`(pending)`
+
 - 準備公開發布：改寫 git 歷史移除 `experiments/results/`（及其早期路徑 `data/experiment_*.json`、
   `data/streaming_*`）——該目錄存的是作者本人語音的逐字稿語料，單一實驗檔含數千段轉錄文字。
   目錄改列 `.gitignore`、本機檔案保留，緣由寫在新增的 `experiments/README.md`；
   CHANGELOG 與 `experiments/autonomous_plan.md` 內 39 個 commit hash 依 filter-repo 的
   commit-map 自動更新為改寫後的值 `(909199d)`
-- 準備公開發布：測試音檔檔名去識別化，移除檔名中的公司名，現為 `data/test_audio/簡報日.m4a`
+- 準備公開發布：測試音檔檔名去識別化，移除檔名中的公司名，現為 `data/test_audio/簡報錄音_8分鐘.m4a`
   （工作區與全歷史一併替換，本機檔案同步改名）`(909199d)`
 - 新增 `LICENSE`（MIT）與 README 授權章節；依賴授權讀自安裝後套件 metadata，
   其中 pystray／pynput 為 LGPLv3，以原始碼形式散布不影響本專案授權，
@@ -56,8 +72,8 @@
 - 錄音診斷：PortAudio `input overflow` 通知改為說明可能短暫遺失音訊的中文訊息 `(pending)`
 
 ## 2026-08-17
-- VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、簡報日，
-  再測簡報日切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，
+- VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、簡報錄音，
+  再測簡報錄音切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，
   長檔另有 RTF > 1 與 repetition degeneration，確認不採用、不整合主流程
   (`experiments/results/vibevoice_bitnet_smoke_2026-08-17.md`)
 

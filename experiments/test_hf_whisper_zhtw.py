@@ -29,7 +29,7 @@ from asr_input.config import load_config  # noqa: E402
 from asr_input.main import build_pipeline  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_AUDIO = PROJECT_ROOT / "data/test_audio/簡報日.m4a"
+DEFAULT_AUDIO = PROJECT_ROOT / "data/test_audio/簡報錄音_8分鐘.m4a"
 CANDIDATE_MODEL = "JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW"
 
 # 常見簡體字取樣，用來快速掃殘留（非窮舉，給眼睛判斷的輔助）

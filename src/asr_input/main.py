@@ -8,7 +8,7 @@ print("正在載入語音模組（首次可能需要 30-60 秒）...", flush=Tru
 
 from asr_input.asr import build_engine  # noqa: E402
 from asr_input.audio.capture import AudioSource, MicrophoneCapture  # noqa: E402
-from asr_input.config import load_config  # noqa: E402
+from asr_input.config import PROJECT_ROOT, load_config  # noqa: E402
 from asr_input.output.clipboard import ClipboardOutput  # noqa: E402
 from asr_input.output.transcript_log import log_transcript  # noqa: E402
 from asr_input.processing.opencc_conv import OpenCCConverter  # noqa: E402
@@ -29,7 +29,11 @@ def build_pipeline(config: dict, *, include_output: bool = True) -> ProcessingPi
     pipeline.add(PunctuationNormalizer())
     pipeline.add(OpenCCConverter(config["processing"]["opencc_config"]))
     if config["processing"].get("localize_tw_terms", False):
-        pipeline.add(TaiwanTermReplacer())
+        # tw_dict_path 相對於專案根目錄；未設定時用 TaiwanTermReplacer 內建的預設路徑。
+        dict_path = config["processing"].get("tw_dict_path")
+        pipeline.add(
+            TaiwanTermReplacer(PROJECT_ROOT / dict_path) if dict_path else TaiwanTermReplacer()
+        )
     if include_output and config["output"]["method"] == "clipboard":
         pipeline.add(ClipboardOutput())
     return pipeline

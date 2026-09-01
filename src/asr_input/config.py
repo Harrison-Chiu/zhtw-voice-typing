@@ -2,7 +2,8 @@ from pathlib import Path
 
 import yaml
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:

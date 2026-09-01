@@ -4,7 +4,7 @@ Feeds an audio file through the full StreamingSession pipeline (the same
 code path used by TrayApp), using start_from_file() to simulate microphone
 input. This verifies VAD + ASR + post-processing end-to-end.
 
-Outputs a JSON report to data/streaming_test_results.json.
+Outputs a JSON report to experiments/results/streaming_test_results.json.
 
 Usage:
     .venv\\Scripts\\python.exe test_streaming.py [audio_path]

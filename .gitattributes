@@ -1,0 +1,18 @@
+# repo 內一律存 LF；工作目錄換行由各平台慣例決定（Windows 取 CRLF、macOS/Linux 取 LF）。
+* text=auto
+
+# Windows 專用啟動器：cmd 與 wscript 需要 CRLF，否則執行失敗。
+# 不論在哪個平台 checkout 都強制 CRLF，避免在 macOS 編輯後推回來壞掉。
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.ps1 text eol=crlf
+
+# 二進位：不做換行轉換，也不在 diff 中展開。
+*.m4a  binary
+*.wav  binary
+*.mp3  binary
+*.onnx binary
+*.pt   binary
+*.bin  binary
+*.safetensors binary
+*.sqlite3 binary

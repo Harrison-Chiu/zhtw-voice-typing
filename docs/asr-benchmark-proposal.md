@@ -31,7 +31,7 @@ Benchmark 不只回答「哪個比較快」，而要能穩定回答：
 
 1. `data/test_audio/中英錄音測試.m4a`
 2. `data/test_audio/機器人展示，語音轉錄測試.m4a`
-3. `data/test_audio/簡報日.m4a`
+3. `data/test_audio/簡報錄音_8分鐘.m4a`
 
 只有完整音檔 smoke 通過後，才進一步跑：
 
@@ -41,7 +41,7 @@ Benchmark 不只回答「哪個比較快」，而要能穩定回答：
 - `data/test_audio/segments/04_長段連續描述.wav`
 - `data/test_audio/segments/05_數字混合_電池規格.wav`
 
-上述五個 segment 是從 `簡報日.m4a` 切出的診斷片段，不是五個獨立來源；
+上述五個 segment 是從 `簡報錄音_8分鐘.m4a` 切出的診斷片段，不是五個獨立來源；
 它們用來定位完整音檔中已觀察到的中英混合、技術名詞、長段與數字問題。候選模型
 不得只在 segments 上表現良好就視為通過完整音檔 smoke。
 
