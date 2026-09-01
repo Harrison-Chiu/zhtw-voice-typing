@@ -9,10 +9,10 @@
   （絕對秒數的幻覺門檻在不同硬體上會誤判並靜默丟棄短段、pystray 與 pynput 在 macOS 主
   執行緒可能衝突、TCC 權限、App Nap）、C 工具鏈，以及 Phase 0–4 順序與四項待實測未知數。
   每項判斷標注「讀碼確認」或「依套件行為推測（未在 macOS 實測）」。
-  決策：單一 repo + 平台抽象層，不拆成兩個 repo `(pending)`
+  決策：單一 repo + 平台抽象層，不拆成兩個 repo `(ae6cb9f)`
 - `docs/roadmap.md` 新增 G 線並標注跨線依賴（G-Phase 2 與 B 線同動 `streaming.py` 品質
   判斷路徑、G-Phase 3 與 D 線同動 `tray.py`、G-Phase 4 與 F 線範圍重疊）；
-  `TODO.md` 加入 G-Phase 0 執行入口與「尚未建立 remote」的待辦 `(pending)`
+  `TODO.md` 加入 G-Phase 0 執行入口與「尚未建立 remote」的待辦 `(ae6cb9f)`
 
 - 測試音檔定名為 `data/test_audio/隊伍簡報日_8分鐘.m4a`：保留原本的辨識度（機器人競賽的
   隊伍簡報日）與長度標示，且不含公司名。音檔本身不進版控（`data/test_audio/` 已 gitignore），
