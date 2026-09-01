@@ -6,9 +6,18 @@
 ' tray.py uses print(); under pythonw sys.stdout is None and print() crashes.
 ' python.exe + hidden window keeps a console buffer so print() works while the
 ' window stays hidden. For troubleshooting use start_tray.bat (visible window).
+'
+' Named arguments (WSH style, e.g. wscript start_tray.vbs /autostart):
+'   /autostart  launch in autostart mode - record path only, model loads on the
+'               first recording. Used by the Windows startup-folder shortcut.
+'               Without it the tray uses manual mode and preloads Whisper.
+'   /check      exit 0 immediately; lets tests parse this file without running it.
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 If WScript.Arguments.Named.Exists("check") Then WScript.Quit 0
+
+startupMode = "manual"
+If WScript.Arguments.Named.Exists("autostart") Then startupMode = "autostart"
 
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 repoDir = fso.GetParentFolderName(scriptDir)
@@ -39,8 +48,8 @@ End If
 
 Set sh = CreateObject("WScript.Shell")
 sh.CurrentDirectory = repoDir
-command = "%ComSpec% /d /s /c """"" & pyExe & """ -m asr_input.tray --startup-mode manual " & _
-    ">> """ & logFile & """ 2>&1"""
+command = "%ComSpec% /d /s /c """"" & pyExe & """ -m asr_input.tray --startup-mode " & _
+    startupMode & " >> """ & logFile & """ 2>&1"""
 exitCode = sh.Run(sh.ExpandEnvironmentStrings(command), 0, True)
 
 If exitCode <> 0 Then

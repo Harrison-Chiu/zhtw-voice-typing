@@ -4,6 +4,12 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 桌面捷徑腳本改成「預設一個、其餘選配」：`create_desktop_shortcut.ps1` 預設只建無視窗的
+  「ASR Input」，有視窗的排錯版改由 `-WithDebugShortcut` 選配（不建捷徑也能直接雙擊
+  `scripts\start_tray.bat` 排錯）。新增 `-Autostart` 在「啟動」資料夾放一份開機自動常駐的
+  捷徑、`-Remove` 移除本腳本建立過的捷徑，並在缺 `.venv` 時提前警告而非等雙擊才跳錯誤框。
+  `start_tray.vbs` 配合支援 `/autostart` 具名參數（未帶時仍為 `manual` 預載，行為不變），
+  開機啟動因此走 lazy 模式、不在開機時占顯存；順帶正規化該檔混用的換行 `(pending)`
 - 新增 `docs/macos-port-plan.md`：macOS 支援的評估正本——A 硬阻斷（torch 的 CUDA index、
   `device: cuda`、PowerShell 剪貼簿、pystray 私有 win32 API、Windows mutex）、B 行為差異
   （絕對秒數的幻覺門檻在不同硬體上會誤判並靜默丟棄短段、pystray 與 pynput 在 macOS 主

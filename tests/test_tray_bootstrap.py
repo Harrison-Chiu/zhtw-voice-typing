@@ -27,10 +27,24 @@ class FakeListener:
         self.stopped = True
 
 
+def _silent_launcher_source() -> str:
+    launcher = Path(__file__).resolve().parents[1] / "scripts" / "start_tray.vbs"
+    return launcher.read_bytes().decode("ascii")
+
+
 def test_silent_launcher_remains_ascii_for_windows_script_host():
     launcher = Path(__file__).resolve().parents[1] / "scripts" / "start_tray.vbs"
 
     assert launcher.read_bytes().isascii()
+
+
+def test_silent_launcher_defaults_to_manual_but_honours_autostart():
+    """開機啟動的捷徑靠 /autostart 走 lazy 模式；桌面捷徑不帶參數時必須維持 manual 預載。"""
+    source = _silent_launcher_source()
+
+    assert 'Named.Exists("autostart")' in source
+    assert '--startup-mode " & _' in source
+    assert "--startup-mode manual" not in source
 
 
 def test_tray_becomes_visible_before_heavy_setup(monkeypatch):

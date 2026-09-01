@@ -46,10 +46,19 @@ uv run python -m asr_input.main   # CLI 版（終端機互動）
 powershell -ExecutionPolicy Bypass -File scripts\create_desktop_shortcut.ps1
 ```
 
-會在桌面建兩個捷徑：
+預設只在桌面建一個 **ASR Input**，走 [`start_tray.vbs`](scripts/start_tray.vbs)：背景常駐、
+無視窗，結束請用系統匣圖示右鍵。
 
-- **ASR Input** — 走 [`start_tray.vbs`](scripts/start_tray.vbs)，背景常駐、無視窗（日常用；結束請用系統匣圖示右鍵）
-- **ASR Input (視窗)** — 走 [`start_tray.bat`](scripts/start_tray.bat)，有視窗看得到 log（排錯用；關視窗即結束）
+選配參數：
+
+| 參數 | 作用 |
+|---|---|
+| `-Autostart` | 另外在「啟動」資料夾放一份，開機自動常駐。走 `autostart` 模式：只載錄音與 CPU VAD，第一次錄音才載 Whisper，開機後不占顯存 |
+| `-WithDebugShortcut` | 另外建「ASR Input (視窗)」，走 [`start_tray.bat`](scripts/start_tray.bat)，有視窗看得到 log（關視窗即結束） |
+| `-Remove` | 移除本腳本建立過的捷徑 |
+
+不加 `-WithDebugShortcut` 也能排錯——直接雙擊 `scripts\start_tray.bat` 即可，捷徑只是省一次
+資料夾切換。無視窗版的輸出寫在 `data/logs/launcher.log`。
 
 改程式內容不需重建捷徑——捷徑只負責啟動，python 每次都讀最新程式碼。只有專案資料夾搬移/改名時才需重跑此腳本。
 
