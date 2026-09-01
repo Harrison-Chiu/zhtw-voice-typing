@@ -10,7 +10,7 @@
   功能段維持原有五條不動，新增分段串流辨識、非阻塞生命週期、幻覺防護、狀態圖示四條，
   沿用「名詞 — 技術說明」格式。串流一項明確寫成 segment-level pipelining
   （非逐字即時、段落內不輸出增量假設），避免被誤讀為 online ASR。
-  開頭加一句英文摘要供搜尋 `(pending)`
+  開頭加一句英文摘要供搜尋 `(fc2944f)`
 - 桌面捷徑腳本改成「預設一個、其餘選配」：`create_desktop_shortcut.ps1` 預設只建無視窗的
   「ASR Input」，有視窗的排錯版改由 `-WithDebugShortcut` 選配（不建捷徑也能直接雙擊
   `scripts\start_tray.bat` 排錯）。新增 `-Autostart` 在「啟動」資料夾放一份開機自動常駐的

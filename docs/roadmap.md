@@ -370,7 +370,9 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 - **E 線修正／介面後續**：從已確認案例提出替換字或完整詞組，使用者確認後才寫規則並做整句
   回歸；不從修正紀錄自動修改 hotwords。待審超過三段時建立批次審核介面；完整歷史 viewer、
   任意紀錄複製、播放、raw／processed／final 與修正功能最後才做，Tray 近期結果維持輕量安全網。
-- **F 線發布後續**：真正建立 Windows 開機自動啟動項目並傳入 `autostart` lazy 模式；處理乾淨
+- **F 線發布後續**：~~真正建立 Windows 開機自動啟動項目並傳入 `autostart` lazy 模式~~
+  （2026-09-01 完成：`create_desktop_shortcut.ps1 -Autostart` 於「啟動」資料夾建立捷徑，
+  經 `start_tray.vbs /autostart` 傳入 lazy 模式；桌面捷徑不帶參數仍為 `manual` 預載）；處理乾淨
   Windows 安裝、打包、模型下載／快取、升級保留設定、公開版 logging 預設與發布／開發設定。
   使用者主動開啟的桌面捷徑仍屬 `manual` 預載，不得因它同樣是無視窗啟動而誤判為 autostart。
 
