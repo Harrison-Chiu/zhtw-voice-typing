@@ -36,3 +36,7 @@ data/test_audio/
 # Environment
 .env
 .env.local
+
+# 實驗原始輸出：內含個人語音的逐字稿語料，不進版控
+# 結論與依據寫在 CLAUDE.md / CHANGELOG.md / docs/，見 experiments/README.md
+experiments/results/

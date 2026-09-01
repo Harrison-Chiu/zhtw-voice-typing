@@ -82,3 +82,16 @@ provider，adapter 預設要求 Zero Data Retention。
 ## 技術棧
 
 faster-whisper · Qwen3-ASR · OpenCC · PyTorch CUDA · uv · ruff
+
+## 授權
+
+本專案以 [MIT License](LICENSE) 釋出。
+
+依賴套件的授權（讀自安裝後的套件 metadata，2026-09-01）：faster-whisper、CTranslate2、
+silero-vad、sounddevice、onnxruntime、PyYAML、keyring、Pillow 為 MIT 系；torch、soundfile、
+numpy 為 BSD-3；opencc-python-reimplemented、qwen-asr 為 Apache-2.0。
+
+其中 **pystray 與 pynput 為 LGPLv3**。本專案以 pip 安裝、未修改其原始碼、且以原始碼形式散布，
+因此不影響本專案自身的授權；若日後打包成單一執行檔散布，需另行確認 LGPL 的相應義務。
+
+模型權重不隨本 repo 散布，各自適用其上游授權。
