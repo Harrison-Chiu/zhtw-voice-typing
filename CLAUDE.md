@@ -32,6 +32,8 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 
 **B. 記錄更新**（repo 內檔案，會進同一個 commit；各檔職責見下方「文件職責分工」表）
 4. `CHANGELOG.md` — 這次完成的事各加一條（倒序、一行＋commit hash；hash 在 commit 後補，或先寫 `(pending)` 下次補）
+   - 補 hash 時**只填本次新增的那幾條**。檔案裡還有其他階段遺留的 `(pending)`（撰寫時 10 條），
+     全域取代會把它們一起填成錯誤的 hash。用條目文字定位範圍，不要無差別 replace
 5. `docs/roadmap.md` — 更新路線狀態與跨線依賴；`TODO.md` 只維護近期執行入口
 6. `CLAUDE.md`：
    - 「已確立的設計決策」— 有實驗結論／決定不重做的做法

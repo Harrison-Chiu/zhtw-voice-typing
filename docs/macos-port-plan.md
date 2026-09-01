@@ -56,7 +56,7 @@
 - (b) 保留絕對秒但移進 device profile，macOS 上另外量測重建回歸集。成本高，且每換一台
   機器就要重來。
 - (c) 引擎級關閉：`transcription_latency_is_quality_signal` 這個旗標已經存在
-  （`asr/base.py` 為 `True`、`asr/openrouter.py` 為 `False`）**[碼]**，若 macOS 換引擎可
+  （`src/asr_input/asr/base.py` 為 `True`、`src/asr_input/asr/openrouter.py` 為 `False`）**[碼]**，若 macOS 換引擎可
   沿用此機制關掉延遲訊號。代價是失去這層防護。
 
 ### B2. tray 與 hotkey 的主執行緒衝突（工程風險最大）
@@ -91,7 +91,7 @@ macOS 沒有 EcoQoS，但背景 app 有 App Nap／QoS 降級。是否會重演 W
 
 - `scripts/start_tray.bat`、`.vbs`、`create_desktop_shortcut.ps1` 無 macOS 對應，需
   `.command` 或 LaunchAgent plist **[碼]**。
-- `output/history_store.py` 的 `DEFAULT_DB_PATH = Path("data/logs/history.sqlite3")` 是
+- `src/asr_input/output/history_store.py` 的 `DEFAULT_DB_PATH = Path("data/logs/history.sqlite3")` 是
   **相對 cwd** 的路徑 **[碼]**。用 LaunchAgent 啟動時 cwd 不是專案目錄，DB 會建在別處。
   （這在 Windows 用 `.vbs` 啟動時可能已是潛在問題，值得一併查。）
 - 相依無 macOS 障礙：opencc-python-reimplemented 是純 Python，onnxruntime／soundfile／
