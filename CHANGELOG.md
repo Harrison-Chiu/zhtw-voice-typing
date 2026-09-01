@@ -7,7 +7,7 @@
 - 測試音檔定名為 `data/test_audio/隊伍簡報日_8分鐘.m4a`：保留原本的辨識度（機器人競賽的
   隊伍簡報日）與長度標示，且不含公司名。音檔本身不進版控（`data/test_audio/` 已 gitignore），
   但檔名字串會出現在被追蹤的文件與腳本中，故檔名仍需去識別化。去識別化已在全歷史完成，
-  此次只動工作區與本機檔案 `(pending)`
+  此次只動工作區與本機檔案 `(843bf0e)`
 - 目錄職責歸位：`scripts/` 只留可重複使用的工具（測試驅動、log 工具、Windows 啟動器），
   三支一次性模型評測 `test_funasr_nano.py`／`test_funasr_nano_v2.py`／`test_hf_whisper_zhtw.py`
   移入 `experiments/`。原本同一個實驗的腳本被切在兩個目錄（CLAUDE.md 的決策條目就同時引用
