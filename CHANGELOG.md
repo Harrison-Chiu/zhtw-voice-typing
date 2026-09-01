@@ -8,12 +8,12 @@
   `data/streaming_*`）——該目錄存的是作者本人語音的逐字稿語料，單一實驗檔含數千段轉錄文字。
   目錄改列 `.gitignore`、本機檔案保留，緣由寫在新增的 `experiments/README.md`；
   CHANGELOG 與 `experiments/autonomous_plan.md` 內 39 個 commit hash 依 filter-repo 的
-  commit-map 自動更新為改寫後的值 `(pending)`
+  commit-map 自動更新為改寫後的值 `(909199d)`
 - 準備公開發布：測試音檔檔名去識別化，移除檔名中的公司名，現為 `data/test_audio/簡報日.m4a`
-  （工作區與全歷史一併替換，本機檔案同步改名）`(pending)`
+  （工作區與全歷史一併替換，本機檔案同步改名）`(909199d)`
 - 新增 `LICENSE`（MIT）與 README 授權章節；依賴授權讀自安裝後套件 metadata，
   其中 pystray／pynput 為 LGPLv3，以原始碼形式散布不影響本專案授權，
-  打包成單一執行檔前需另行確認 `(pending)`
+  打包成單一執行檔前需另行確認 `(909199d)`
 - 修正短段幻覺直接進剪貼簿：`min_hallucination_audio_sec`（3.0s）原本讓 3 秒以下的段跳過整個
   幻覺偵測，實際 log 出現 0.26s 音訊輸出 60 字亂碼、0.29s 子段輸出「作詞・作曲・編曲 男高等部分」
   等文字被原樣貼給使用者。改為此門檻只切分「還救得回來／救不回來」：短段仍跑 RMS 正規化，
