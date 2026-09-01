@@ -7,18 +7,18 @@
 - 目錄職責歸位：`scripts/` 只留可重複使用的工具（測試驅動、log 工具、Windows 啟動器），
   三支一次性模型評測 `test_funasr_nano.py`／`test_funasr_nano_v2.py`／`test_hf_whisper_zhtw.py`
   移入 `experiments/`。原本同一個實驗的腳本被切在兩個目錄（CLAUDE.md 的決策條目就同時引用
-  `scripts/` 與 `experiments/` 下的檔案），引用已一併更新 `(pending)`
+  `scripts/` 與 `experiments/` 下的檔案），引用已一併更新 `(0939a0d)`
 - 刪除 `scripts/test_full.py`：傳 `prompt=` 給 `QwenASREngine`，但該類別的參數是 `context`，
   執行即 `TypeError`；另寫死 Qwen 1.7B 與已改掉的 `s2twp`，功能由 `scripts/test_audio_file.py`
-  取代（它驅動真正的 `main()`），且無任何文件引用 `(pending)`
+  取代（它驅動真正的 `main()`），且無任何文件引用 `(0939a0d)`
 - 修死設定 `processing.tw_dict_path`：先前從未被讀，路徑寫死在 `tw_terms.py`。
   改由 `build_pipeline()` 傳入（相對專案根目錄，未設定則用內建預設），
-  並補兩個測試釘住這條線，避免又退化成沒人驗證的設定 `(pending)`
+  並補兩個測試釘住這條線，避免又退化成沒人驗證的設定 `(0939a0d)`
 - 新增 `.gitattributes`：repo 內統一存 LF，`.bat`／`.vbs`／`.ps1` 強制 checkout 成 CRLF。
-  先前換行只靠各機器的 `core.autocrlf`，在只有 Windows 時可行；為 macOS 支援預先寫死規則 `(pending)`
+  先前換行只靠各機器的 `core.autocrlf`，在只有 Windows 時可行；為 macOS 支援預先寫死規則 `(0939a0d)`
 - 測試音檔更名為 `data/test_audio/簡報錄音_8分鐘.m4a`：去識別化後的 `簡報日` 單獨看語意不明，
-  改為與其他測試檔一致的內容描述式命名。此次僅動工作區與本機檔案，不再改寫歷史 `(pending)`
-- 修正 `scripts/test_streaming.py` docstring 的輸出路徑（`data/` → `experiments/results/`）`(pending)`
+  改為與其他測試檔一致的內容描述式命名。此次僅動工作區與本機檔案，不再改寫歷史 `(0939a0d)`
+- 修正 `scripts/test_streaming.py` docstring 的輸出路徑（`data/` → `experiments/results/`）`(0939a0d)`
 
 - 準備公開發布：改寫 git 歷史移除 `experiments/results/`（及其早期路徑 `data/experiment_*.json`、
   `data/streaming_*`）——該目錄存的是作者本人語音的逐字稿語料，單一實驗檔含數千段轉錄文字。
