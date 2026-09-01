@@ -12,6 +12,7 @@
 | `docs/asr-benchmark-proposal.md` | A 線資料、gold、指標、runner 與報告規格 |
 | `docs/faster-whisper-customization-plan.md` | B 線 Faster Whisper／CT2 修改層級與候選技術 |
 | `docs/vad-experiment-plan.md` | C 線 E0–E6 實驗與取代 Silero 的 gate |
+| `docs/macos-port-plan.md` | G 線 macOS 障礙清單、解法路線與待驗證未知數 |
 | `CLAUDE.md` | 現行架構、已落地能力與已確立的技術決策 |
 | `CHANGELOG.md` | 已完成且已提交的變更 |
 | `README.md` | 使用者安裝、使用方式與文件入口 |
@@ -40,6 +41,7 @@ D 啟動／Tray／生命週期 ─┐
 E Log／回饋／歷史介面 ──┴─ 可在邊界凍結後平行
 
 F 發布工程（確定對外發布時啟動）
+G macOS 支援（取得 mac 後啟動；Phase 0 可先做，不需要機器）
 ```
 
 ### A — 評測基礎
@@ -384,6 +386,22 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 發布前依實際 import/打包稽核決定，或以額外 dependency group 隔離。模型快取、
 設定與 log 必須使用穩定的使用者資料目錄，不依賴目前工作目錄；發布版預設關閉音訊 log，
 診斷模式與開發版才保留完整資料。是否移除其他依賴，以實際 import/打包稽核結果決定。
+
+### G — macOS 支援
+
+狀態：`planned`。Phase 0 可立即執行（不需要 mac、不影響 Windows 行為），其餘待取得機器。
+
+規格正本：[`docs/macos-port-plan.md`](macos-port-plan.md)——障礙清單、解法路線、分階段
+順序與待實測的未知數都在該文件，此處不複製。
+
+決策：採單一 repo + 平台抽象層，不拆成 Windows／macOS 兩個 repo。理由是平台相依只有
+少數幾處，而共用的 pipeline 才是持續在改的部分。
+
+跨線依賴：
+- G-Phase 2（幻覺門檻改成 RTF 相對比）與 B 線的解碼決定性實驗都會動
+  `streaming.py` 的品質判斷路徑，兩者需協調先後。該項即使不移植 macOS 也值得做。
+- G-Phase 4（打包）與 F 線範圍重疊，啟動前先確認邊界。
+- G-Phase 3 會動 `tray.py`，與 D 線衝突，不可同時進行。
 
 ## 平行開發邊界
 

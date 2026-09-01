@@ -4,6 +4,16 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 新增 `docs/macos-port-plan.md`：macOS 支援的評估正本——A 硬阻斷（torch 的 CUDA index、
+  `device: cuda`、PowerShell 剪貼簿、pystray 私有 win32 API、Windows mutex）、B 行為差異
+  （絕對秒數的幻覺門檻在不同硬體上會誤判並靜默丟棄短段、pystray 與 pynput 在 macOS 主
+  執行緒可能衝突、TCC 權限、App Nap）、C 工具鏈，以及 Phase 0–4 順序與四項待實測未知數。
+  每項判斷標注「讀碼確認」或「依套件行為推測（未在 macOS 實測）」。
+  決策：單一 repo + 平台抽象層，不拆成兩個 repo `(pending)`
+- `docs/roadmap.md` 新增 G 線並標注跨線依賴（G-Phase 2 與 B 線同動 `streaming.py` 品質
+  判斷路徑、G-Phase 3 與 D 線同動 `tray.py`、G-Phase 4 與 F 線範圍重疊）；
+  `TODO.md` 加入 G-Phase 0 執行入口與「尚未建立 remote」的待辦 `(pending)`
+
 - 測試音檔定名為 `data/test_audio/隊伍簡報日_8分鐘.m4a`：保留原本的辨識度（機器人競賽的
   隊伍簡報日）與長度標示，且不含公司名。音檔本身不進版控（`data/test_audio/` 已 gitignore），
   但檔名字串會出現在被追蹤的文件與腳本中，故檔名仍需去識別化。去識別化已在全歷史完成，
