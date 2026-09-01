@@ -12,7 +12,7 @@
   - 安裝務必指定 `.venv`:`uv pip install -U <pkg> --python "D:\Harrison\code_test\asr-input\.venv\Scripts\python.exe"`,否則會裝到 conda base。
 - **可逆安全網**:模型測試若把環境弄亂,`uv sync` 可還原到 `uv.lock` 狀態。
 - **模型測試零污染原則**:新模型一律「能跑就跑測試音檔、眼睛驗、不行就丟」。丟 = 刪掉新增的 adapter 檔 + 移除 `build_engine()` 分支 + config 還原,**不留痕跡**。
-- **測試音檔**:`data/test_audio/簡報錄音_8分鐘.m4a`（8 分鐘,含已知幻覺段）。
+- **測試音檔**:`data/test_audio/隊伍簡報日_8分鐘.m4a`（8 分鐘,含已知幻覺段）。
 - **不要動** `streaming.py` 的幻覺偵測（為 Whisper 調的,本階段不重構;模型測試階段把它當背景）。
 
 ## 執行前必讀（給冷啟動 / cron 喚醒的自己）
@@ -84,7 +84,7 @@
 - **接法（重要）**:**不要走 faster-whisper**（它只吃 CTranslate2 格式,要轉檔）。本評測用 `transformers` pipeline 直接跑,目的只是「看品質值不值得」。
 - **檔案**:新增 `scripts/test_hf_whisper_zhtw.py`（一次性測試腳本,放 scripts/）
 - **做法**:
-  1. 用現有 `FileAudioSource` 解碼 `data/test_audio/簡報錄音_8分鐘.m4a` 成 16k np.ndarray（重用現成解碼,不要自己寫 ffmpeg）。
+  1. 用現有 `FileAudioSource` 解碼 `data/test_audio/隊伍簡報日_8分鐘.m4a` 成 16k np.ndarray（重用現成解碼,不要自己寫 ffmpeg）。
   2. `transformers` ASR pipeline,`model="JacobLinCool/whisper-large-v3-turbo-common_voice_19_0-zh-TW"`,**務必 `chunk_length_s=30`**（8 分鐘音訊不切會 OOM）。
   3. 印原始輸出;另跑一份過現有 `build_pipeline` 後處理的輸出對照。
   4. **同時跑一份現況基準**:用現有 config（large-v3-turbo + faster-whisper）跑同一支音檔,兩者並列,才能比較。
@@ -128,7 +128,7 @@ uv pip install funasr --python ".venv-funasr\Scripts\python.exe"
   1. 用 `funasr` 的 `AutoModel`,`hub="hf"`,model 指向 `FunAudioLLM/Fun-ASR-Nano-2512`（API 細節寫 adapter 時上網/讀 repo 確認）。
   2. `transcribe()`:吃 16k np.ndarray → 回字串。
   3. **重點驗引導性**:在它的 prompt/context（讀 repo 確認參數名）餵「使用台灣繁體中文」,看會不會吐繁體。這是它對比 Whisper 的關鍵賣點。
-  4. config 暫切 `engine: funasr_nano`,跑 `scripts/test_audio_file.py` 簡報音檔。
+  4. config 暫切 `engine: funasr_nano`,跑 `scripts/test_audio_file.py` 隊伍簡報日_8分鐘音檔。
 - **驗收**:能被引導出繁體 + 品質 ≥ 現況基準。
 - **錯誤訊號 + 方向**:
   - `import funasr` 失敗 → 使用者沒裝,**不要自行安裝**,記錄後結束模型階段。

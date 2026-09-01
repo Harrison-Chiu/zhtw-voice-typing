@@ -4,6 +4,10 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-01
+- 測試音檔定名為 `data/test_audio/隊伍簡報日_8分鐘.m4a`：保留原本的辨識度（機器人競賽的
+  隊伍簡報日）與長度標示，且不含公司名。音檔本身不進版控（`data/test_audio/` 已 gitignore），
+  但檔名字串會出現在被追蹤的文件與腳本中，故檔名仍需去識別化。去識別化已在全歷史完成，
+  此次只動工作區與本機檔案 `(pending)`
 - 目錄職責歸位：`scripts/` 只留可重複使用的工具（測試驅動、log 工具、Windows 啟動器），
   三支一次性模型評測 `test_funasr_nano.py`／`test_funasr_nano_v2.py`／`test_hf_whisper_zhtw.py`
   移入 `experiments/`。原本同一個實驗的腳本被切在兩個目錄（CLAUDE.md 的決策條目就同時引用
@@ -16,8 +20,6 @@
   並補兩個測試釘住這條線，避免又退化成沒人驗證的設定 `(0939a0d)`
 - 新增 `.gitattributes`：repo 內統一存 LF，`.bat`／`.vbs`／`.ps1` 強制 checkout 成 CRLF。
   先前換行只靠各機器的 `core.autocrlf`，在只有 Windows 時可行；為 macOS 支援預先寫死規則 `(0939a0d)`
-- 測試音檔更名為 `data/test_audio/簡報錄音_8分鐘.m4a`：去識別化後的 `簡報日` 單獨看語意不明，
-  改為與其他測試檔一致的內容描述式命名。此次僅動工作區與本機檔案，不再改寫歷史 `(0939a0d)`
 - 修正 `scripts/test_streaming.py` docstring 的輸出路徑（`data/` → `experiments/results/`）`(0939a0d)`
 
 - 準備公開發布：改寫 git 歷史移除 `experiments/results/`（及其早期路徑 `data/experiment_*.json`、
@@ -25,8 +27,8 @@
   目錄改列 `.gitignore`、本機檔案保留，緣由寫在新增的 `experiments/README.md`；
   CHANGELOG 與 `experiments/autonomous_plan.md` 內 39 個 commit hash 依 filter-repo 的
   commit-map 自動更新為改寫後的值 `(909199d)`
-- 準備公開發布：測試音檔檔名去識別化，移除檔名中的公司名，現為 `data/test_audio/簡報錄音_8分鐘.m4a`
-  （工作區與全歷史一併替換，本機檔案同步改名）`(909199d)`
+- 準備公開發布：測試音檔檔名去識別化，移除檔名中的公司名（工作區與全歷史一併替換，
+  本機檔案同步改名）；最終定名見下方條目 `(909199d)`
 - 新增 `LICENSE`（MIT）與 README 授權章節；依賴授權讀自安裝後套件 metadata，
   其中 pystray／pynput 為 LGPLv3，以原始碼形式散布不影響本專案授權，
   打包成單一執行檔前需另行確認 `(909199d)`
@@ -72,8 +74,8 @@
 - 錄音診斷：PortAudio `input overflow` 通知改為說明可能短暫遺失音訊的中文訊息 `(pending)`
 
 ## 2026-08-17
-- VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、簡報錄音，
-  再測簡報錄音切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，
+- VibeVoice-ASR-BitNet standalone smoke 收尾：依序測試中英、機器人展示、隊伍簡報日，
+  再測隊伍簡報日切出的五個 segments；只有機器人展示相對可用，其餘出現系統性錯詞／漏字／重複，
   長檔另有 RTF > 1 與 repetition degeneration，確認不採用、不整合主流程
   (`experiments/results/vibevoice_bitnet_smoke_2026-08-17.md`)
 

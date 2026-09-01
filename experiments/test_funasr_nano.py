@@ -24,7 +24,7 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_AUDIO = PROJECT_ROOT / "data/test_audio/簡報錄音_8分鐘.m4a"
+DEFAULT_AUDIO = PROJECT_ROOT / "data/test_audio/隊伍簡報日_8分鐘.m4a"
 MODEL = "FunAudioLLM/Fun-ASR-Nano-2512"
 
 SIMPLIFIED_SAMPLE = set("软视启发这说应话时题问为业产权术语种类别样东马达机现")
