@@ -2,9 +2,10 @@
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 
-LOG_DIR = Path("data/logs")
+from asr_input.paths import logs_dir
+
+LOG_DIR = logs_dir()
 LOG_FILE = LOG_DIR / "transcripts.jsonl"
 
 
