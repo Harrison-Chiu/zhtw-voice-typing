@@ -5,7 +5,7 @@
 
 ## 2026-09-03
 
-- experiment: 審核佇列多來源預標註排序（production／FW temperature=0／Qwen3-ASR-1.7B 三來源兩兩 normalized CER）——候選組平均分歧 0.853 vs 對照 0.065，但中位數僅 0.046 vs 0.027，差距由少數重複退化段拉開；量尺會摺疊標點，故純標點訊號在此必然低分歧 (pending)
+- experiment: 審核佇列多來源預標註排序（production／FW temperature=0／Qwen3-ASR-1.7B 三來源兩兩 normalized CER）——候選組平均分歧 0.853 vs 對照 0.065，但中位數僅 0.046 vs 0.027，差距由少數重複退化段拉開；量尺會摺疊標點，故純標點訊號在此必然低分歧 (ece7389)
 
 - experiment: determinism 擴大重測（100 段種子分層隨機、不看標籤，每段每組 5 次）——production fallback 階梯 97/100 逐字一致、不一致的 3 段全在 <1s 且全是幻覺；固定 `temperature=0` 100/100 一致但只是把幻覺變穩定，且會讓 12 段的轉錄時間掉到 1.5 秒門檻以下、使現行幻覺偵測在部分短段失效 (b591c7c)
 
