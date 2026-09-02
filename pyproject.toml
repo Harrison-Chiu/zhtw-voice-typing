@@ -35,6 +35,10 @@ src = ["src"]
 extend-exclude = ["scripts/build_log_viewer.py"]
 
 [tool.ruff.lint]
+
+[tool.ruff.lint.per-file-ignores]
+# 內嵌 HTML/CSS/JS 模板的長行不折（折了反而難讀），Python 部分照常檢查。
+"scripts/build_review_queue.py" = ["E501"]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.format]
