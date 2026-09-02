@@ -11,7 +11,7 @@
   容量比 **0.522**（602.4 → 314.7 MiB），跨時長區間 0.45–0.53 幾乎持平；編碼 539 檔共 11.1s。
   另新增 `src/asr_input/storage/flac_archive.py`：先寫 `.tmp`、讀回逐 sample 驗證、通過才
   `os.replace()` 就位、最後才選擇性刪來源，任何前段失敗都不動原檔；**production 尚未呼叫它**。
-  新增 9 項測試（共 245 passed），含四個失敗階段的參數化測試 `(pending)`
+  新增 9 項測試（共 245 passed），含四個失敗階段的參數化測試 `(e856623)`
 - E 線錯誤候選篩選：新增 `src/asr_input/eval/signals.py`（18 條確定性訊號）、
   `scripts/scan_error_candidates.py`（掃 `history.sqlite3` 出候選 + 同時長分布對照組）與
   `scripts/build_review_queue.py`（可播音訊、三態標記的審核頁）。門檻取自當時 1425 段的實測
