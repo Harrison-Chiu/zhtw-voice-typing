@@ -308,9 +308,9 @@ roadmap：FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗�
   profile），並寫入記憶 `absolute-time-beats-rtf-ratio`。
   **後續不要重提此提案。** macOS CPU int8 讓正常段普遍超過門檻是真問題，但解法是
   門檻進 device profile，不是改用比例。
-- [ ] **T5.2** roadmap 狀態欄拆成「規格狀態」與「執行進度」兩欄（見 5.3），
+- [x] **T5.2** roadmap 狀態欄拆成「規格狀態」與「執行進度」兩欄（見 5.3），
   順便畫掉 5.2 那條已完成的 D 線待辦。
-- [ ] **T5.3** 盤點 `docs/index.html` 與現況的落差，列出翻新清單（F 線範圍，只盤點不動工）。
+- [x] **T5.3** 盤點 `docs/index.html` 與現況的落差，列出翻新清單（F 線範圍，只盤點不動工）。
 - [ ] **T5.4** A 線多來源預標註：用 production FW + 另一組解碼設定 + 至少一個不同後端
   對同一批音訊產生候選稿，自動對齊算逐字分歧。**需要 GPU，使用者已確認今晚 GPU 閒置。**
   產出的是「哪些段需要人裁決」的排序，不是 gold。

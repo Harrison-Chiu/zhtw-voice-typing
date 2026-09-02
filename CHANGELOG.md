@@ -4,6 +4,8 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-03
+
+- docs: 修正 benchmark 提案與 roadmap 的實作位置記載——程式落在 `src/asr_input/eval/` 而非提案原寫的 `experiments/benchmark/`（理由：要被 `tests/` 匯入隨 pytest 跑），並把提案狀態改為「Phase 1／2 程式部分已落地、gold 仍是阻塞點」 (pending)
 - 盤點 `docs/index.html` 的落差並寫成 `docs/index-html-gaps.md`（未改版，翻新屬 F 線）：
   該頁最後更新於 2026-06-18、內容停在 v0.1.0，仍寫預設引擎是 Qwen3-ASR-1.7B、
   OpenCC 用 `s2twp`、config 只有四個區塊（現行 12 個），且把 VAD／快捷鍵／串流列為

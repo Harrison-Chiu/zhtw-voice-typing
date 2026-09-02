@@ -478,7 +478,8 @@ Phase 0 已落地：`pyproject.toml` 的 torch／torchaudio CUDA index 加上
 
 - 路線圖核准後先凍結；平行任務不各自改 `docs/roadmap.md`、`TODO.md`、
   `CHANGELOG.md`，由整合方最後統一更新。
-- A 僅修改 `experiments/benchmark/`、benchmark 規格與結果。
+- A 僅修改 `src/asr_input/eval/`、`scripts/run_benchmark.py`、benchmark 規格與結果
+  （提案原寫 `experiments/benchmark/`，實作改放 `src/` 以便納入 pytest）。
 - B 主要修改 `src/asr_input/asr/` 與 ASR config；C 主要修改 `src/asr_input/audio/`。
 - D 可修改 `tray.py`、啟動腳本與 lifecycle tests。
 - E 第一階段只修改 log schema、viewer 與獨立 UI，不改 tray 選單；需要 tray 入口時留到

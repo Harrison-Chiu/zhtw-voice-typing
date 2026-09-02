@@ -1,6 +1,19 @@
 # ASR Input 標準化 Benchmark 提案
 
-狀態：提案，尚未取代既有一次性實驗。
+狀態：Phase 1／Phase 2 的程式部分已落地（2026-09-03），資料部分仍未開始；尚未取代既有
+一次性實驗。
+
+**實作位置與本提案不同**：提案寫的是把共通測量邏輯抽成 `experiments/benchmark/` 套件，
+實際落在 `src/asr_input/eval/`（`metrics.py`／`manifest.py`／`environment.py`／`runner.py`），
+CLI 為 `scripts/run_benchmark.py`。改放 `src/` 的理由是這些模組要被 `tests/` 匯入並隨
+`pytest` 一起跑，而 `experiments/` 依專案慣例是一次性腳本、不進測試。以 `src/asr_input/eval/`
+為準，本文件其餘章節提到 `experiments/benchmark/` 之處同此。
+
+已完成：manifest schema 與驗證、環境指紋、指標（CER／MER／標點 F1／錯誤型態／重複／
+決定性）、runner 與 Markdown 摘要、Smoke 層可執行。
+未完成：**gold transcript**（需人聽音訊，是目前的阻塞點）、Smoke 20／Core 120 的實際抽樣、
+多引擎預標註、VRAM sampler、P95 latency、ABBA 排程、HTML dashboard、baseline 與
+`--compare-to` gate。
 
 ## 1. 要回答的決策
 
