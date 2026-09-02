@@ -122,9 +122,12 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `docs/index.html` — 互動式專案文件頁面
 - `scripts/search_logs.py` — log 品質掃描：確定性標籤（半形標點、簡體、空格、重複…）篩選有問題的段
 - `scripts/build_log_viewer.py` — 產生 `data/logs/viewer.html` 互動檢視器（標籤篩選 + 音訊播放）
+- `src/asr_input/eval/signals.py` — 離線錯誤訊號的**正本**：18 條確定性規則（延遲、重複、字形、標點、字元率、fallback 狀態…），只讀 DB 既有欄位、不碰模型
+- `scripts/scan_error_candidates.py` — 用上述訊號掃 `history.sqlite3`，輸出候選 + 同時長分布對照組 JSON 到 `data/logs/review/`（gitignore，內含逐字稿）
+- `scripts/build_review_queue.py` — 由候選 JSON 產生 `data/logs/review/queue.html`：逐段播放（Web Audio 從 job wav 切片）、三態標記，`--serve` 會把標記寫回 `marks.json`
 - `scripts/` — 手動執行、可重複使用的工具：測試驅動（`test_audio_file.py`、`test_streaming.py`、
   `transcribe_file.py`）、log 工具（`search_logs.py`、`build_log_viewer.py`、`export_history.py`、
-  `import_legacy_logs.py`）、Windows 啟動器（`start_tray.bat`／`.vbs`、`create_desktop_shortcut.ps1`）。
+  `import_legacy_logs.py`、`scan_error_candidates.py`、`build_review_queue.py`）、Windows 啟動器（`start_tray.bat`／`.vbs`、`create_desktop_shortcut.ps1`）。
   一次性的模型評測不放這裡，放 `experiments/`
 - `experiments/` — 一次性實驗腳本，結果在 `experiments/results/`
 

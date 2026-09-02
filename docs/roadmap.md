@@ -206,8 +206,12 @@ RMS 外環在 Windows 深／淺背景的最終視覺驗收。queue 容量與 cod
 
 ### E — Log／回饋／歷史介面
 
-狀態：`in_progress`。Phase 1 的資料底座已落地；真實 log 篩選、凍結回歸集、codec 實驗、修正
-學習與完整 viewer 尚未完成。
+狀態：`in_progress`。Phase 1 的資料底座已落地。2026-09-03 補上真實 log 的篩選工具：
+`src/asr_input/eval/signals.py`（18 條確定性訊號，門檻取自當時 1425 段的實測分位數）、
+`scripts/scan_error_candidates.py`（掃描 + 同時長分布對照組）與 `scripts/build_review_queue.py`
+（可播音訊、三態標記的審核佇列）。首次掃描 1425 段得 87 段候選（6.1%）+ 22 段對照。
+**下一步卡在人工審核**——訊號的 precision／recall 要有人聽過音訊才算得出來，也才知道哪些
+訊號該調整。凍結回歸集、codec 實驗、修正學習與完整 viewer 尚未完成。
 
 核心目的不是保存一般使用歷史，而是從真實使用資料建立可重現的錯誤案例與回歸集，供後續
 ASR、VAD、後處理及 codec 實驗驗證。錯誤型態、案例價值與保留規則不得只靠想像設計；需要

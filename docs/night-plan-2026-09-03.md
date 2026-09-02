@@ -73,6 +73,24 @@
       「未在 macOS 上驗證」、roadmap G 線狀態、CLAUDE.md 架構節、CHANGELOG 兩條。
       依 §5.1，路徑修正在 CHANGELOG 寫成預防性修正，不寫成修既有故障。
 - [x] T1.8 `git merge --no-ff` 回 main (`8cfd51a`)，hash 回填 (`0f023ef`)。
+- [x] T2.1 盤點 DB（2026-09-03 當下）：542 jobs 全為 completed、全部
+      whisper/large-v3-turbo/beam 5/cuda；1425 segments、1473 attempts、38 corpus_labels
+      （slow-transcription 19、fallback 10、capture-warning 4、hallucination-rejected 4、
+      fallback-exhausted 1）；2344 個 wav、1301.8 MB、無缺檔；資料期間 2026-08-12～09-02。
+      關鍵發現：1425 段裡只有 19 段轉錄時間 > 1.5s，**單靠延遲訊號候選數遠遠不夠**，
+      高 recall 得靠其他訊號撐；另有 6 段 raw 很長但 processed 為 NULL（13–30s 音訊），
+      因此新增 `processed-missing` 訊號。
+- [x] T2.2–T2.3 訊號模組與掃描腳本 (`e1516f2`)：`src/asr_input/eval/signals.py` 18 條
+      確定性訊號 + `scripts/scan_error_candidates.py`（唯讀開 DB、同時長分布對照組、
+      seed 可重現）、24 項新測試（共 234 passed）。掃描結果 1425 段中 87 段（6.1%）為候選、
+      對照組 22 筆。門檻取自當下 1425 段的實測分位數，記在模組 docstring。
+      `no-comma-long` 由 30 字調到 60 字：30 字會打中 128 段、其中 127 段只有這個訊號打中，
+      會淹掉佇列（段長 p50 38 字）。從未命中的訊號有 4 條（dominant-char、empty-output、
+      cjk-spacing、near-silent），留著但要在審核後檢討是否過嚴。
+- [x] T2.4 審核佇列 viewer (`2216831`)：`scripts/build_review_queue.py` →
+      `data/logs/review/queue.html`。已在瀏覽器實測：109 筆載入、音訊 GET 200 並播放、
+      點選與快捷鍵標記都寫進 marks.json、重建 HTML 後標記正確帶回。設計上**標記前不顯示
+      候選／對照分組**，避免審核者看到標籤後對候選判得較嚴，讓對照組失去意義。
 - [ ] （以下待執行）
 
 ---
@@ -150,18 +168,18 @@ E 標 `in_progress`、G 標 `planned`，這些是**執行進度**。同一欄兩
 
 **重點是高 recall**：寧可初篩多抓（false positive 可接受），不可漏掉真正的錯誤。
 
-- [ ] **T2.1** 盤點 DB：各表 schema、既有 corpus_labels 的 38 筆是什麼、
+- [x] **T2.1** 盤點 DB：各表 schema、既有 corpus_labels 的 38 筆是什麼、
   `asr_attempts` 的 adopted／rejected 分布、時長分布。輸出一份現況摘要（不含逐字稿內容
   的統計可以進 repo；含逐字稿的一律留在 gitignore 路徑）。
-- [ ] **T2.2** 實作候選規則腳本 `scripts/scan_error_candidates.py`。訊號至少涵蓋：
+- [x] **T2.2** 實作候選規則腳本 `scripts/scan_error_candidates.py`。訊號至少涵蓋：
   絕對轉錄時間 > 1.5s（已知高相關 heuristic，**不得弱化或改成 ratio**，見 roadmap）、
   fallback 觸發與 fallback exhausted、極短音訊異常、重複退化（連續 token 重複、
   最高單字占比）、輸出長度與音訊時長比異常、簡體殘留、半形標點、空輸出、
   capture warning／near-zero RMS。每個候選要標明**是哪個訊號打中的**，方便事後檢討訊號
   本身的有效性。
-- [ ] **T2.3** 抽正常對照組：與候選同時長分布、未被任何訊號打中的樣本，數量約候選的
+- [x] **T2.3** 抽正常對照組：與候選同時長分布、未被任何訊號打中的樣本，數量約候選的
   20–30%。沒有對照組就無法判斷訊號的 precision。
-- [ ] **T2.4** 產出審核佇列：擴充或新寫 viewer，支援「逐筆播放音訊 + 看 raw/processed +
+- [x] **T2.4** 產出審核佇列：擴充或新寫 viewer，支援「逐筆播放音訊 + 看 raw/processed +
   三鍵標記（真錯誤／正常／不確定）+ 記錄是哪個訊號打中」。輸出到 gitignore 路徑。
   這是早上使用者第一件可以直接開始做的事，**優先把它做到能用**。
 - [ ] **T2.5** 若時間允許：用便宜模型對候選做初審，只標「可疑位置」與「明顯無關語音的

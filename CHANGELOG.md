@@ -4,6 +4,14 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-03
+- E 線錯誤候選篩選：新增 `src/asr_input/eval/signals.py`（18 條確定性訊號）、
+  `scripts/scan_error_candidates.py`（掃 `history.sqlite3` 出候選 + 同時長分布對照組）與
+  `scripts/build_review_queue.py`（可播音訊、三態標記的審核頁）。門檻取自當時 1425 段的實測
+  分位數而非猜測；首掃 87 段候選（6.1%）+ 22 段對照。審核頁刻意隱藏「候選／對照」分組直到
+  該筆被標記，否則審核者對已知被標記的段會判得更嚴，對照組就量不到訊號的漏抓率。
+  幻覺訊號維持**絕對轉錄時間**，並補一條測試把「改成 transcribe/audio 比值」的回歸釘死
+  （25.2s 音訊 3.5s 轉錄的已知幻覺，比值 0.14 反而比健康短段更好看）。
+  新增 24 項測試（共 234 passed）`(pending)`
 - macOS 移植 Phase 0：建立 `src/asr_input/platform/` 平台抽象層，處理
   `docs/macos-port-plan.md` 的 A1–A3。`pyproject.toml` 的 torch／torchaudio CUDA index 加
   `sys_platform != 'darwin'` marker（Windows 解析結果不變，uv.lock 只多出 darwin 分支）；
