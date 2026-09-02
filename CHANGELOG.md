@@ -11,7 +11,7 @@
   該筆被標記，否則審核者對已知被標記的段會判得更嚴，對照組就量不到訊號的漏抓率。
   幻覺訊號維持**絕對轉錄時間**，並補一條測試把「改成 transcribe/audio 比值」的回歸釘死
   （25.2s 音訊 3.5s 轉錄的已知幻覺，比值 0.14 反而比健康短段更好看）。
-  新增 24 項測試（共 234 passed）`(pending)`
+  新增 24 項測試（共 234 passed）`(4d70af0)`
 - macOS 移植 Phase 0：建立 `src/asr_input/platform/` 平台抽象層，處理
   `docs/macos-port-plan.md` 的 A1–A3。`pyproject.toml` 的 torch／torchaudio CUDA index 加
   `sys_platform != 'darwin'` marker（Windows 解析結果不變，uv.lock 只多出 darwin 分支）；
