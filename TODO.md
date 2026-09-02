@@ -5,16 +5,22 @@
 
 ## 下一個執行批次
 
-1. **A 評測基礎**：依 [`docs/asr-benchmark-proposal.md`](docs/asr-benchmark-proposal.md)
-   建立 manifest/schema、Smoke/Core 樣本、指標 runner 與第一版 dashboard。
+1. **A 評測基礎**：manifest/schema、指標與 runner 已於 2026-09-03 落地
+   （`src/asr_input/eval/` + `scripts/run_benchmark.py`，Smoke 層已跑通）。
+   剩下的是 **gold transcript**——需要人聽音訊，與下方 E 線的人工審核是同一個瓶頸；
+   dashboard 與 P95／VRAM 收集尚未做。規格見
+   [`docs/asr-benchmark-proposal.md`](docs/asr-benchmark-proposal.md)。
 2. **B ASR／CT2**：A baseline 凍結後，先跑解碼參數與 fallback 決定性，再評估
    compute type、dynamic batching 與 diagnostics。
 3. **C VAD／音訊**：與 A 共用 fixture/schema，依
    [`docs/vad-experiment-plan.md`](docs/vad-experiment-plan.md) 執行 E0–E6、Silero
    JIT/ONNX 與 codec 決定性實驗。
-4. **G-Phase 0 macOS 前置**：依 [`docs/macos-port-plan.md`](docs/macos-port-plan.md)
-   的 Phase 0 處理 torch 的平台 marker、`device`/`compute_type` 自動偵測、剪貼簿抽平台層，
-   並把平台相依收攏成 `platform/`。不需要 mac、不影響 Windows 現行行為。
+4. ~~**G-Phase 0 macOS 前置**~~：2026-09-03 完成（torch 平台 marker、
+   `device`／`compute_type` 解析、剪貼簿平台層、`paths.py`）。Phase 1 起需要實體 mac。
+   規格見 [`docs/macos-port-plan.md`](docs/macos-port-plan.md)。
+5. **人工審核（A／E 共同瓶頸）**：`scripts/build_review_queue.py` 產出的審核佇列
+   （87 段候選 + 22 段對照）一旦有人聽過，同時解開 E 線訊號的 precision／recall
+   與 A 線的 gold。這是目前擋住最多下游工作的單一項目。
 
 D/E 可在獨立 worktree 平行準備，但需遵守 roadmap 的共享檔案與整合邊界；F 暫緩。
 G-Phase 3 會動 `tray.py`，與 D 線衝突，不可同時進行。

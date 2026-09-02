@@ -17,8 +17,37 @@
 | `CHANGELOG.md` | 已完成且已提交的變更 |
 | `README.md` | 使用者安裝、使用方式與文件入口 |
 
-狀態只有：`ready`（規格足以執行）、`needs-decision`、`exploration`、`deferred`、
-`done`。執行結果完成後移入 CHANGELOG；不在多份文件同步勾選。
+## 狀態標示
+
+狀態分兩軸記，因為「規格夠不夠清楚可以動手」和「實際做到哪」是兩件會各自變動的事：
+一條線可以規格完備但還沒排到（B），也可以已經有半套實作但規格還在等實驗結果（C）。
+先前只用單一欄位時，各線實際寫的是 `in_progress`／`ready after A`／`validation`
+等混合值，跟宣告的字彙對不上。
+
+| 軸 | 值 | 意義 |
+|---|---|---|
+| 規格 | `spec-ready` | 規格足以直接執行，不必再決定方向 |
+| | `needs-decision` | 卡在一個待人決定的問題，決定前不宜開工 |
+| | `exploration` | 規格本身要靠實驗才寫得出來 |
+| 執行 | `not-started` | 尚未動工 |
+| | `in-progress` | 有已合併的實作，仍有明列的剩餘交付 |
+| | `validation` | 實作完成，等實機／人工驗收 |
+| | `blocked` | 已動工但被外部條件擋住（機器、人工審核、他線） |
+| | `done` | 本線範圍內無剩餘交付 |
+| | `deferred` | 刻意不做，等某個觸發條件 |
+
+兩軸互相獨立，不要用執行狀態推規格狀態。跨線前置（例如「A 完成前不動 B」）寫在各線
+的「前置」欄，不塞進狀態值。完成的執行結果移入 CHANGELOG；不在多份文件同步勾選。
+
+| 線 | 規格 | 執行 | 前置／擋住的原因 |
+|---|---|---|---|
+| A 評測基礎 | `spec-ready` | `blocked` | 骨架已上線；真正的 gold 需人聽音訊 |
+| B ASR／CT2 | `spec-ready` | `not-started` | 等 A 的量尺 |
+| C VAD／音訊 | `exploration` | `in-progress` | ONNX 後端已上線；E0–E6 等 A 的 fixture／schema |
+| D 啟動／Tray | `spec-ready` | `validation` | 等 Windows 實機七情境驗收 |
+| E Log／回饋 | `exploration` | `blocked` | 資料底座與訊號已上線；等人工審核算 precision／recall |
+| F 發布工程 | `needs-decision` | `deferred` | 等「確定對外發布」的決定 |
+| G macOS | `spec-ready` | `in-progress` | Phase 0 完成；Phase 1+ 等取得機器 |
 
 ## 已確立共識
 
@@ -46,7 +75,8 @@ G macOS 支援（取得 mac 後啟動；Phase 0 可先做，不需要機器）
 
 ### A — 評測基礎
 
-狀態：`in_progress`。2026-09-03 落地骨架：`src/asr_input/eval/` 下的
+狀態：規格 `spec-ready`／執行 `blocked`（卡在 gold）。
+2026-09-03 落地骨架：`src/asr_input/eval/` 下的
 `metrics.py`（所有指標共用同一份 Levenshtein 對齊）、`manifest.py`（公開 manifest／
 私密對應檔的 schema 與驗證）、`environment.py`（環境指紋）、`runner.py`（引擎無關的
 runner），CLI 為 `scripts/run_benchmark.py`。已用 5 段短音訊跑通 Smoke 層。
@@ -66,7 +96,7 @@ runner），CLI 為 `scripts/run_benchmark.py`。已用 5 段短音訊跑通 Smo
 
 ### B — ASR／CT2 優化
 
-狀態：`ready after A`。
+狀態：規格 `spec-ready`／執行 `not-started`。前置：A 線量尺。
 
 順序：
 
@@ -83,7 +113,7 @@ SenseVoice 等新引擎。既有模型橫評已收斂，沒有新需求或 A 線
 
 ### C — VAD／音訊
 
-狀態：`ready after A fixture/schema`。
+狀態：規格 `exploration`／執行 `in-progress`。前置：E0–E6 需要 A 線的 fixture／schema。
 
 包含：
 
@@ -103,7 +133,8 @@ torch，tray 到「可錄音」約 0.4s）。等價性證據見 `experiments/com
 
 ### D — 啟動／Tray／生命週期
 
-狀態：`validation`。狀態機、主要生命週期實作與自動化測試已落地，正在做 Windows 實機情境
+狀態：規格 `spec-ready`／執行 `validation`。
+狀態機、主要生命週期實作與自動化測試已落地，正在做 Windows 實機情境
 驗收與 16×16 Tray 可讀性收斂；未完成項目仍保留在本節，不以單元測試通過冒充整條路線完成。
 
 已同意方向：
@@ -137,7 +168,9 @@ torch，tray 到「可錄音」約 0.4s）。等價性證據見 `experiments/com
 - 支援閒置卸載，初版預設為完成最後一次辨識後 30 分鐘；Tray 提供永不卸載、15/30/60
   分鐘及立即卸載。卸載後的下一次快捷鍵沿用相同的「立即錄音 + `ensure_model_loaded()` + FIFO」
   路徑自動重載，不要求使用者先進選單，讓釋放顯存前後的操作方式維持一致。
-- 支援開機啟動與單一實例。直接輸出到游標位置維持暫緩，現階段輸出仍以剪貼簿為準。
+- 支援單一實例。~~支援開機啟動~~（2026-09-01 由 F 線完成：`create_desktop_shortcut.ps1 -Autostart`
+  在「啟動」資料夾建立捷徑，經 `start_tray.vbs /autostart` 傳入 lazy 模式）。直接輸出到游標
+  位置維持暫緩，現階段輸出仍以剪貼簿為準。
 - 載入失敗、CUDA 不可用與麥克風錯誤都必須進入可辨識且可重試的狀態，不得卡在載入中，
   也不得靜默丟棄已錄音訊。
 - 啟動復原時，`pending` 與前次 `failed` 工作都自動排入 FIFO 並各重試一次，不要求先進 Tray
@@ -212,7 +245,8 @@ RMS 外環在 Windows 深／淺背景的最終視覺驗收。queue 容量與 cod
 
 ### E — Log／回饋／歷史介面
 
-狀態：`in_progress`。Phase 1 的資料底座已落地。2026-09-03 補上真實 log 的篩選工具：
+狀態：規格 `exploration`／執行 `blocked`（卡在人工審核）。
+Phase 1 的資料底座已落地。2026-09-03 補上真實 log 的篩選工具：
 `src/asr_input/eval/signals.py`（18 條確定性訊號，門檻取自當時 1425 段的實測分位數）、
 `scripts/scan_error_candidates.py`（掃描 + 同時長分布對照組）與 `scripts/build_review_queue.py`
 （可播音訊、三態標記的審核佇列）。首次掃描 1425 段得 87 段候選（6.1%）+ 22 段對照。
@@ -393,7 +427,7 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 
 ### F — 發布工程
 
-狀態：`deferred`，確定公開或給其他人使用時啟動。
+狀態：規格 `needs-decision`／執行 `deferred`，確定公開或給其他人使用時啟動。
 
 範圍：LICENSE、版本統一、CI、乾淨 Windows 安裝 smoke test、Windows/NVIDIA/CUDA 相容性
 檢查、首次模型下載與失敗重試、portable onedir、升級時保留使用者設定、發布/開發設定分離，
@@ -406,7 +440,8 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 
 ### G — macOS 支援
 
-狀態：Phase 0 `done`（2026-09-03），其餘 `planned`、待取得機器。
+狀態：規格 `spec-ready`／執行 `in-progress`。Phase 0 已完成（2026-09-03），
+Phase 1 起待取得機器。
 
 Phase 0 已落地：`pyproject.toml` 的 torch／torchaudio CUDA index 加上
 `sys_platform != 'darwin'` marker（A1）；新增 `src/asr_input/platform/`，內含剪貼簿後端
