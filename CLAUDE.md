@@ -166,6 +166,16 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - **無頭啟動被 Win11 EcoQoS 節流（已測+已修，2026-07-07）**：`start_tray.vbs` 以 `WindowStyle 0`（隱藏、無前景視窗）啟動 → Win11 把本行程判為背景並套 EcoQoS（效率模式），把驅動 CUDA 的多執行緒趕到 E-core／降頻。實測（同段音訊重複解碼）：隱藏啟動 faster-whisper 中位數 **~1.1s（抖 0.7–1.4s）**，`start_tray.bat`（前景終端）不受影響。修法：`tray.py:main()` 開頭呼叫 `_optout_ecoqos()`，用 `SetProcessInformation(ProcessPowerThrottling, EXECUTION_SPEED 控制 + StateMask=0)` 明確關閉節流 → 隱藏啟動 **~0.46s（快 2.4×、變異幾乎歸零）**，前景啟動無害。**只 EcoQoS opt-out 就夠**，`timeBeginPeriod(1)` 拆開單測完全無效（已排除）。診斷陷阱：**單執行緒 tight-loop CPU 探針測不到**（頻率不變、仍在 P-core），因為節流打的是多執行緒／驅動 GPU 的那批，要用真實解碼 workload 才量得到
 - **benchmark 評分對象要與 gold 同一階段（2026-09-03 實測）**：`scripts/run_benchmark.py` 的 `--stage` 預設 `processed`，也就是評分使用者實際拿到的文字（含標點正規化與 OpenCC）。起因是 runner 一開始只評分引擎原始輸出，而 log 裡的既有文字是後處理過的：同一批 5 段短音訊，raw 對 processed gold 是 Strict CER 7.96%／標點 recall 0.556，補上後處理後是 1.77%／1.0，差額幾乎全是後處理本來就負責的標點與字形。要比較引擎本身才用 `--stage raw`，且 gold 也必須是未後處理的。stage 會記進結果 JSON 的 engine 欄位，避免事後分不清兩種數字。另注意 `normalized_cer` 可能高於 `strict_cer`（實測 1.92% vs 1.77%）——正規化移除標點使分母變小，錯誤數更少但比率更高，這是定義使然
 - **benchmark 的速度數字不參與品質判斷**：`runner.py` 的 `speed.realtime_factor` 只是吞吐量報告。幻覺判斷一律用絕對轉錄時間（見上方短段幻覺分級門檻），不得改用 transcribe/audio 比例
+- **不要為了決定性把 `temperature` 固定成 0（2026-09-03 實測）**：production 的 fallback 階梯
+  `(0.0, 0.2, …, 1.0)` 在 100 段種子分層隨機樣本（五個時長帶各 20 段，選取不看標籤）上
+  97/100 逐字一致，不一致的 3 段全落在 <1s 帶；固定 `temperature=(0.0,)` 後 100/100 一致。
+  但**決定性不等於品質**：那 3 段內容全是幻覺，pinned 只是把它們變成穩定的幻覺，三段的
+  輸出都是 config hotwords 被整串回吐（「詞表 詞表 詞表…」）。更關鍵的副作用是耗時——
+  fallback 的重試才是時間來源，pinned 讓 29 段中 12 段的轉錄時間從 >=1.5 秒掉到門檻以下，
+  其中 2 段正是 production 靠 `hallucination-rejected` 擋掉的，也就是**固定 temperature 會讓
+  絕對時間幻覺偵測在部分短段失效**。可作為 codec／回歸實驗的受控條件，不可當 production
+  改善提案；若要提，先補短段幻覺的替代偵測訊號。腳本 `experiments/measure_determinism.py`，
+  結果 JSON 含逐字稿留在 gitignore 的 `experiments/results/`
 - **Python 環境**：uv 管理（鎖檔 `uv.lock`），Python 3.12，PyTorch CUDA 12.4 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest
