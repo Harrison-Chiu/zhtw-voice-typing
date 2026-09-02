@@ -314,7 +314,7 @@ roadmap：FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗�
 - [ ] **T5.4** A 線多來源預標註：用 production FW + 另一組解碼設定 + 至少一個不同後端
   對同一批音訊產生候選稿，自動對齊算逐字分歧。**需要 GPU，使用者已確認今晚 GPU 閒置。**
   產出的是「哪些段需要人裁決」的排序，不是 gold。
-- [ ] **T5.5** determinism 實測：固定 `temperature=0` 對難段重跑 N 次，量 unique output 數，
+- [x] **T5.5** determinism 實測：固定 `temperature=0` 對難段重跑 N 次，量 unique output 數，
   對照 roadmap 記載的 2026-07-31 前置實驗（某疑難段在預設 fallback 下 10 次產生 7 種輸出，
   固定 temperature 後 10 次一致）。擴大樣本，**不得沿用原實驗那個帶
   `known_asr_error` 標籤的排序截斷取樣**。

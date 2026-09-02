@@ -371,6 +371,32 @@ VAD／capture／gap metadata、error history、correction candidate、corpus lab
   不代表一般 WAV 無法重現同類錯誤，也尚不足以得出任何 codec 通過結論。下一次 codec 實驗需
   擴大固定解碼條件下的穩定樣本，再比較 FLAC、Opus 與 MP3。原實驗的前 16 段全帶有硬編碼
   `known_asr_error` 標籤，只有一段同時是 fallback；下一輪不得沿用這個排序截斷取樣。
+- 2026-09-03 擴大重測（`experiments/measure_determinism.py`，結果 JSON 在 gitignore 的
+  `experiments/results/` 內，含逐字稿）。取樣改為**只看時長的種子分層隨機抽樣**：五個時長帶
+  （<1s／1-3s／3-8s／8-20s／>=20s）各 20 段共 100 段，選取過程完全不看標籤，標籤只在事後
+  報告組成。每段在兩組設定下各跑 5 次，唯一變因是 `temperature`：production 的 fallback
+  階梯 `(0.0, 0.2, …, 1.0)` vs 固定 `(0.0,)`；其餘皆為 production config，音訊直接由 job
+  的完整錄音 wav 依 `start_sample:end_sample` 切出。
+  - **observed**：production 組 97/100 逐字一致，3 段不一致且全部落在 <1s 帶（該帶 20 段中
+    3 段，其餘四帶 0/80），不一致的段都是 5 次跑出 5 種輸出。固定 `temperature=0` 後
+    100/100 一致。這證實 2026-07-31 的方向性結論，並補上前次做不到的普遍性：**在預設
+    fallback 下，不具逐字決定性的是極短音訊，不是一般音訊**。
+  - **observed，且是不能只看決定性的理由**：那 3 段的內容全是幻覺（沒有可用文字），固定
+    `temperature=0` 只是把它們變成**穩定的**幻覺——三段的 pinned 輸出都是 config 裡的
+    hotwords 被整串回吐（「詞表 詞表 詞表…」）。決定性與正確性是兩件事，不可用「輸出一致」
+    當品質改善的證據。
+  - **observed**：固定 temperature 也大幅改變轉錄耗時。production 組有 29 段的 median
+    轉錄時間 >=1.5 秒，其中 **12 段在 pinned 後掉到 1.5 秒以下**（多為 <1s 音訊，
+    production 端跑掉 2.8–15.2 秒，pinned 只要 0.4–0.7 秒）；反向也有 7 段由 <1.5s 變成
+    >=1.5s。原因是 fallback 階梯在門檻不過時會逐一提高 temperature 重解，耗時來自重試次數。
+  - **derived**：現行幻覺偵測用的是**絕對轉錄時間 >1.5 秒**，而上述 12 段裡有 2 段正是
+    production 靠 `hallucination-rejected` 擋下來的。因此**把 temperature 固定成 0 會讓這個
+    偵測訊號在部分短段失效**，幻覺反而會直接進剪貼簿。這是由 median 時間是否跨越門檻推得，
+    尚未實際跑一次完整 pipeline 端到端驗證。**結論：`temperature=0` 可作為 codec／回歸實驗
+    的受控條件，但不可當成 production 設定的改善提案**；若真要提，必須先補上短段幻覺的
+    替代偵測訊號。
+  - **限制**：樣本取自本機既有 `history.sqlite3`，不是獨立語料；只量逐字一致性，完全沒量
+    正確率；時間以 5 次的 median 代表，單次仍有抖動。
 
 Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 >1.5 秒、極短音訊異常、
 嚴重重複／輸出長度異常與已知問題挑選，再依序驗證：(1) production 設定重跑時是否重現同類
