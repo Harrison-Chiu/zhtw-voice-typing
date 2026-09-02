@@ -15,7 +15,9 @@ from pathlib import Path
 
 import numpy as np
 
-LOG_ROOT = Path("data/logs/sessions")
+from asr_input.paths import logs_dir
+
+LOG_ROOT = logs_dir() / "sessions"
 
 
 class SessionLogger:

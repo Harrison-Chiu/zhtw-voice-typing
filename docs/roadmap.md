@@ -391,7 +391,14 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 
 ### G — macOS 支援
 
-狀態：`planned`。Phase 0 可立即執行（不需要 mac、不影響 Windows 行為），其餘待取得機器。
+狀態：Phase 0 `done`（2026-09-03），其餘 `planned`、待取得機器。
+
+Phase 0 已落地：`pyproject.toml` 的 torch／torchaudio CUDA index 加上
+`sys_platform != 'darwin'` marker（A1）；新增 `src/asr_input/platform/`，內含剪貼簿後端
+（A3，macOS 走 `pbcopy` 並以 stdin 餵入）與 device／compute_type 解析（A2，config 明確
+指定優先，未指定才偵測）；另新增 `src/asr_input/paths.py`，把 history／session log 的
+相對路徑改以套件位置解析——這是為 LaunchAgent 不保證 cwd 做的**預防性**修正，Windows 兩條
+啟動路徑本來就有設好 cwd。未碰 `tray.py`（A4／A5 屬 Phase 3）。
 
 規格正本：[`docs/macos-port-plan.md`](macos-port-plan.md)——障礙清單、解法路線、分階段
 順序與待實測的未知數都在該文件，此處不複製。

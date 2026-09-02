@@ -1,6 +1,7 @@
 """ASR engines and the config-driven factory."""
 
 from asr_input.asr.base import ASREngine
+from asr_input.platform import resolve_device
 
 
 def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
@@ -11,12 +12,20 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
     """
     engine_name = asr_cfg.get("engine", "qwen")
 
+    # Resolved once here rather than in each engine, so every engine sees the same
+    # decision. `device` may be absent from config.yaml entirely — that means "auto".
+    device, compute_type, device_note = resolve_device(
+        asr_cfg.get("device"), asr_cfg.get("compute_type")
+    )
+    if device_note:
+        print(f"    ℹ️ {device_note}")
+
     if engine_name == "qwen":
         from asr_input.asr.qwen import QwenASREngine
 
         engine = QwenASREngine(
             model_id=asr_cfg["model_id"],
-            device=asr_cfg["device"],
+            device=device,
             language=asr_cfg.get("language"),
             context=asr_cfg.get("context", ""),
         )
@@ -26,8 +35,8 @@ def build_engine(asr_cfg: dict, vad_cfg: dict | None = None) -> ASREngine:
 
         engine = WhisperFWEngine(
             model_id=asr_cfg["model_id"],
-            device=asr_cfg["device"],
-            compute_type=asr_cfg.get("compute_type", "float16"),
+            device=device,
+            compute_type=compute_type,
             language=asr_cfg.get("language", "zh"),
             initial_prompt=asr_cfg.get("initial_prompt", "繁體中文，台灣用語。"),
             hotwords=asr_cfg.get("hotwords"),

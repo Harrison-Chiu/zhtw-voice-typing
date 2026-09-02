@@ -16,8 +16,10 @@ from typing import Any
 
 import numpy as np
 
+from asr_input.paths import logs_dir
+
 SCHEMA_VERSION = 2
-DEFAULT_DB_PATH = Path("data/logs/history.sqlite3")
+DEFAULT_DB_PATH = logs_dir() / "history.sqlite3"
 
 
 @dataclass(frozen=True)

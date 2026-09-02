@@ -96,7 +96,7 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `src/asr_input/tray.py` — System Tray 進入點（全域快捷鍵 + 串流辨識）
 - `src/asr_input/streaming.py` — `StreamingSession` 協調器（VAD + ASR + pipeline 串流整合）
 - `src/asr_input/asr/base.py` — ASR 引擎抽象介面（`ASREngine`）
-- `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換
+- `src/asr_input/asr/__init__.py` — `build_engine()` 工廠，依 config `engine` 切換；device／compute_type 在此統一解析
 - `src/asr_input/asr/qwen.py` — Qwen3-ASR 實作，用 `qwen-asr` 套件
 - `src/asr_input/asr/openrouter.py` — 預設停用的雲端 STT adapter，key 只讀環境變數／Credential Manager
 - `src/asr_input/asr/whisper_fw.py` — faster-whisper 實作（**目前預設引擎**）
@@ -107,7 +107,14 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `src/asr_input/audio/capture.py` — `AudioSource` 抽象介面 + `MicrophoneCapture` 實作
 - `src/asr_input/audio/streaming_vad.py` — `StreamingVAD`：即時逐 chunk 餵入 Silero VAD，靜音觸發切句
 - `src/asr_input/audio/vad_backend.py` — VAD 後端協定與實作（ONNX Runtime／torch JIT，同一份 Silero v5 權重）
-- `src/asr_input/output/clipboard.py` — 剪貼簿輸出
+- `src/asr_input/output/clipboard.py` — 剪貼簿輸出（薄包裝，實作在 `platform/`）
+- `src/asr_input/platform/clipboard_backends.py` — 剪貼簿後端：Windows 走 PowerShell `Set-Clipboard`、
+  macOS 走 `pbcopy`（stdin 餵入，不經命令列跳脫）；`select_clipboard_backend()` 依平台挑選
+- `src/asr_input/platform/device.py` — device／compute_type 解析。config 明確指定就尊重，
+  未指定才偵測 CUDA。**CUDA 探測必須維持惰性**——`import ctranslate2` 會連帶把 torch
+  載進 `sys.modules`（冷啟 ~73s），不可在錄音路徑或 module import 時觸發
+- `src/asr_input/paths.py` — `project_root()`／`data_dir()`／`logs_dir()`，以套件位置解析路徑，
+  不依賴 cwd（可用 `ASR_INPUT_HOME` 環境變數覆寫）
 - `src/asr_input/output/session_log.py` — 每段存 raw + processed + wav + config 快照（供離線實驗）
 - `config.yaml` — 使用者設定（模型、裝置、語言、後處理選項、串流參數、logging）
 - `data/tw_dict.yaml` — 台灣用語替換詞表
