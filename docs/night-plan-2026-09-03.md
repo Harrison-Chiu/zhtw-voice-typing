@@ -311,7 +311,7 @@ roadmap：FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗�
 - [x] **T5.2** roadmap 狀態欄拆成「規格狀態」與「執行進度」兩欄（見 5.3），
   順便畫掉 5.2 那條已完成的 D 線待辦。
 - [x] **T5.3** 盤點 `docs/index.html` 與現況的落差，列出翻新清單（F 線範圍，只盤點不動工）。
-- [ ] **T5.4** A 線多來源預標註：用 production FW + 另一組解碼設定 + 至少一個不同後端
+- [x] **T5.4** A 線多來源預標註：用 production FW + 另一組解碼設定 + 至少一個不同後端
   對同一批音訊產生候選稿，自動對齊算逐字分歧。**需要 GPU，使用者已確認今晚 GPU 閒置。**
   產出的是「哪些段需要人裁決」的排序，不是 gold。
 - [x] **T5.5** determinism 實測：固定 `temperature=0` 對難段重跑 N 次，量 unique output 數，

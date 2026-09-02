@@ -254,6 +254,25 @@ Phase 1 的資料底座已落地。2026-09-03 補上真實 log 的篩選工具�
 **下一步卡在人工審核**——訊號的 precision／recall 要有人聽過音訊才算得出來，也才知道哪些
 訊號該調整。凍結回歸集、codec 實驗、修正學習與完整 viewer 尚未完成。
 
+2026-09-03 另補上審核佇列的**排序訊號**（`experiments/preannotate_review_queue.py`，
+結果 JSON 在 gitignore 的 `data/logs/review/`，含逐字稿）。做法是對同一段音訊取三個獨立
+來源——production 既有輸出、faster-whisper 固定 `temperature=0`、Qwen3-ASR-1.7B（不同
+backend）——兩兩算 `normalized_cer`，以平均分歧排序。**這只是排序訊號**：不寫任何 corpus
+標籤、不裁決 gold，也不把任何來源當正確答案；分歧高只代表「值得先聽」。
+- **observed**：候選組平均分歧 0.853（n=87），對照組 0.065（n=22）。但平均值被少數極端段
+  拉開（最高 38.3，來自重複退化使某來源長度暴增），**中位數其實接近**：候選 0.046 vs
+  對照 0.027。9/87 候選超過對照組的最大值 0.667，那批是最明確該先聽的。
+- **observed**：47/87 候選的三來源分歧 <0.05，其中 40 段的訊號是 `no-comma-long`。
+- **量尺盲區（必讀，勿誤讀上一條）**：`normalized_cer` 會先摺疊空白、標點與字體再比對，
+  所以**純標點類訊號在這個量尺上必然接近零分歧**——`no-comma-long` 得分低是量尺看不見標點
+  造成的，不能拿來當「該訊號誤報」的證據。要評 `no-comma-long` 要用
+  `punctuation_f1`，而那需要 gold。
+- **derived**：三來源一致也不等於正確（共同偏誤仍可能一致），所以低分歧只能用來決定
+  審核順序，不能用來免除審核。
+- **踩坑（observed）**：faster-whisper（CTranslate2）與 Qwen（torch）各自帶 cuDNN，同一個
+  process 先後載入會在 `Could not load symbol cudnnGetLibConfig` 直接中止直譯器，先
+  `unload()` 也無效（DLL 已常駐）。腳本因此讓每個引擎跑各自的子行程。
+
 核心目的不是保存一般使用歷史，而是從真實使用資料建立可重現的錯誤案例與回歸集，供後續
 ASR、VAD、後處理及 codec 實驗驗證。錯誤型態、案例價值與保留規則不得只靠想像設計；需要
 大量分析時，另開獨立工作使用便宜模型掃描實際 log，再由人工抽查重要問題與令人困擾的小問題。
