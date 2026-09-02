@@ -26,13 +26,15 @@
 
 ## A. 硬阻斷：不改就裝不起來或跑不起來
 
-| # | 位置 | 問題 | 解法路線 |
-|---|------|------|---------|
-| A1 | `pyproject.toml` 的 `[tool.uv.sources]` | torch／torchaudio 釘在 `pytorch-cu124` index，macOS 無此 wheel，`uv sync` 直接失敗 **[碼]** | 加 marker：`marker = "sys_platform != 'darwin'"`。更乾淨的做法是把 torch 降為 optional extra——VAD 已走 ONNX，torch 目前只剩 qwen 引擎與 torch VAD 後端在用 **[碼]** |
-| A2 | `config.yaml` 的 `asr.device: cuda`／`compute_type: float16` | macOS 無 CUDA。faster-whisper 底層的 CTranslate2 在 macOS 只有 CPU 後端，沒有 Metal／MPS **[推測]** | 短期 `device: cpu` + `compute_type: int8`，並在 `asr/__init__.py:build_engine()` 加自動偵測。長期見 Phase 1 |
-| A3 | `src/asr_input/output/clipboard.py` | 直接 `subprocess.run(["powershell", ..., "Set-Clipboard"])` **[碼]** | 抽平台層：macOS 用 `pbcopy`（以 stdin 餵入，順帶消掉目前那個引號跳脫的脆弱點） |
-| A4 | `src/asr_input/tray.py` 的 `_silent_notify()` | `from pystray._util import win32` 並呼叫私有的 `icon._message`；在 macOS 上 import 即失敗 **[碼]** | 平台分支：macOS 走 `icon.notify()` 或 `osascript -e 'display notification'` |
-| A5 | `src/asr_input/single_instance.py` | 用 `CreateMutexW`；非 win32 已 early-return 視為取得，**不會 crash，但 macOS 等於沒有單一實例保護** **[碼]** | 加 POSIX 分支：lock file + `fcntl.flock` |
+狀態欄的「已落地」指 Phase 0（2026-09-03）已在 Windows 上實作並通過測試，但**未在 macOS 上驗證**。
+
+| # | 位置 | 問題 | 解法路線 | 狀態 |
+|---|------|------|---------|------|
+| A1 | `pyproject.toml` 的 `[tool.uv.sources]` | torch／torchaudio 釘在 `pytorch-cu124` index，macOS 無此 wheel，`uv sync` 直接失敗 **[碼]** | 加 marker：`marker = "sys_platform != 'darwin'"`。更乾淨的做法是把 torch 降為 optional extra——VAD 已走 ONNX，torch 目前只剩 qwen 引擎與 torch VAD 後端在用 **[碼]** | 已落地（採 marker；optional extra 未做） |
+| A2 | `config.yaml` 的 `asr.device: cuda`／`compute_type: float16` | macOS 無 CUDA。faster-whisper 底層的 CTranslate2 在 macOS 只有 CPU 後端，沒有 Metal／MPS **[推測]** | 短期 `device: cpu` + `compute_type: int8`，並在 `asr/__init__.py:build_engine()` 加自動偵測。長期見 Phase 1 | 已落地（`platform/device.py`） |
+| A3 | `src/asr_input/output/clipboard.py` | 直接 `subprocess.run(["powershell", ..., "Set-Clipboard"])` **[碼]** | 抽平台層：macOS 用 `pbcopy`（以 stdin 餵入，順帶消掉目前那個引號跳脫的脆弱點） | 已落地（`platform/clipboard_backends.py`） |
+| A4 | `src/asr_input/tray.py` 的 `_silent_notify()` | `from pystray._util import win32` 並呼叫私有的 `icon._message`；在 macOS 上 import 即失敗 **[碼]** | 平台分支：macOS 走 `icon.notify()` 或 `osascript -e 'display notification'` | 未做（Phase 3） |
+| A5 | `src/asr_input/single_instance.py` | 用 `CreateMutexW`；非 win32 已 early-return 視為取得，**不會 crash，但 macOS 等於沒有單一實例保護** **[碼]** | 加 POSIX 分支：lock file + `fcntl.flock` | 未做（Phase 3） |
 
 `tray.py` 的 `_optout_ecoqos()` 已有 `sys.platform != "win32"` 保護，不需修改 **[碼]**。
 
@@ -106,9 +108,11 @@ macOS 沒有 EcoQoS，但背景 app 有 App Nap／QoS 降級。是否會重演 W
 
 - `scripts/start_tray.bat`、`.vbs`、`create_desktop_shortcut.ps1` 無 macOS 對應，需
   `.command` 或 LaunchAgent plist **[碼]**。
-- `src/asr_input/output/history_store.py` 的 `DEFAULT_DB_PATH = Path("data/logs/history.sqlite3")` 是
-  **相對 cwd** 的路徑 **[碼]**。用 LaunchAgent 啟動時 cwd 不是專案目錄，DB 會建在別處。
-  （這在 Windows 用 `.vbs` 啟動時可能已是潛在問題，值得一併查。）
+- ~~`history_store.py` 的 `DEFAULT_DB_PATH` 相對 cwd~~ **已處理（2026-09-03）**：新增
+  `src/asr_input/paths.py`，`history_store`／`session_log`／`transcript_log` 改以套件位置
+  解析路徑（可用 `ASR_INPUT_HOME` 覆寫）。順帶查了原先存疑的 Windows 情況——`start_tray.vbs`
+  有設 `CurrentDirectory`、`start_tray.bat` 有 `cd /d "%~dp0.."` **[碼]**，兩條啟動路徑的
+  cwd 本來就正確，所以這是**為 LaunchAgent（不保證 cwd）做的預防性修正**，不是修既有故障。
 - 相依無 macOS 障礙：opencc-python-reimplemented 是純 Python，onnxruntime／soundfile／
   numpy 都有 arm64 wheel，keyring 在 macOS 走 Keychain **[推測]**。
 - 全域開發慣例中的 MSIX 虛擬化、Big5 編碼、`.vbs`／`.ps1` 編碼問題在 macOS 不存在。

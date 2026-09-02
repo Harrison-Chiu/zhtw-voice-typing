@@ -3,6 +3,23 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-09-03
+- macOS 移植 Phase 0：建立 `src/asr_input/platform/` 平台抽象層，處理
+  `docs/macos-port-plan.md` 的 A1–A3。`pyproject.toml` 的 torch／torchaudio CUDA index 加
+  `sys_platform != 'darwin'` marker（Windows 解析結果不變，uv.lock 只多出 darwin 分支）；
+  剪貼簿抽成後端協定，Windows 保留原本的 PowerShell `Set-Clipboard` 行為、macOS 走 `pbcopy`
+  並以 stdin 餵入（文字不再進命令列，順帶消掉引號跳脫的脆弱點）；device／compute_type 改由
+  `platform/device.py` 統一解析，config 明確指定優先、未指定才偵測 CUDA，且探測維持惰性
+  （`import ctranslate2` 會連帶載入 torch）。另新增 `paths.py`，把 history／session log 的
+  相對路徑改以套件位置解析——這是為 macOS LaunchAgent 不保證 cwd 做的**預防性**修正，
+  Windows 兩條啟動路徑（`.vbs` 設 CurrentDirectory、`.bat` 有 `cd /d`）本來就正確，
+  不是修既有故障。新增 22 項測試（共 210 passed）；不碰 `tray.py` (pending)
+- 撤回文件中「幻覺門檻改用 RTF 相對比」的提案並收斂到單一決策點：該提案與 `docs/roadmap.md`
+  E 線的明文禁令衝突，卻仍被反覆提起。追查後確認不是記憶問題而是文件問題——決策只寫在
+  不會自動載入的 roadmap，而 `docs/macos-port-plan.md` 把 Phase 2 直接命名為「門檻 RTF
+  相對化」、roadmap G 線的跨線依賴又照抄該階段名，前一次修正只改了論述段、漏掉階段名。
+  三處已改為「門檻的裝置校準」並附撤回理由與驗算，決策本身寫進 `CLAUDE.md` (pending)
+
 ## 2026-09-01
 - README 補「為什麼有這個專案」一節與四條技術功能：動機以一段改寫後的對話引言帶出
   （本地執行、繁體輸出、現成方案不夠好），後接四項實際耗時的問題與數據（短音訊幻覺、
