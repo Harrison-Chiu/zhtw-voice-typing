@@ -4,6 +4,14 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-03
+- FLAC 無損保存驗證（只驗證，未切換保存格式）：`experiments/verify_flac_roundtrip.py`
+  對 `data/logs/audio/` 全量 542 檔做 PCM16 → FLAC → PCM16 往返，逐 sample 比對
+  **539/539 bit-exact**（另 3 檔是 44 bytes、0 frames 的空 wav，libsndfile 無法為零長度
+  串流開啟 FLAC 寫入——單變因確認 0 frames 失敗、1 frames 正常，屬邊界條件而非無損性失敗）。
+  容量比 **0.522**（602.4 → 314.7 MiB），跨時長區間 0.45–0.53 幾乎持平；編碼 539 檔共 11.1s。
+  另新增 `src/asr_input/storage/flac_archive.py`：先寫 `.tmp`、讀回逐 sample 驗證、通過才
+  `os.replace()` 就位、最後才選擇性刪來源，任何前段失敗都不動原檔；**production 尚未呼叫它**。
+  新增 9 項測試（共 245 passed），含四個失敗階段的參數化測試 `(pending)`
 - E 線錯誤候選篩選：新增 `src/asr_input/eval/signals.py`（18 條確定性訊號）、
   `scripts/scan_error_candidates.py`（掃 `history.sqlite3` 出候選 + 同時長分布對照組）與
   `scripts/build_review_queue.py`（可播音訊、三態標記的審核頁）。門檻取自當時 1425 段的實測

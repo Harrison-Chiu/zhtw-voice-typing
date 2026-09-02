@@ -108,6 +108,23 @@
 `scripts/prereview_candidates.py`——只讀 `data/logs/review/candidates_*.json`，
 輸出附加的排序分數檔，不寫 `corpus_labels`、不產生 gold（roadmap 明文禁止）。
 
+### T3 FLAC 無損保存驗證 — 完成（`observed`）
+
+全量 542 檔往返：**539/539 有內容的檔 bit-exact**，容量比 **0.522**（602.4 → 314.7 MiB），
+各時長區間 0.45–0.53 幾乎持平，編碼 539 檔共 11.1s／解碼 20.9s。
+
+3 個「失敗」檔查清楚了：44 bytes、0 frames 的空 wav。單獨用合成資料驗證，
+0 frames 開檔即失敗、1 frames 正常 → 是 FLAC 無法表示零長度串流，不是無損性問題。
+遷移時必須當 `skipped-empty` 略過。
+
+T3.4 產出 `src/asr_input/storage/flac_archive.py` + `tests/test_flac_archive.py`（9 項），
+**沒有接上任何 production 路徑**，符合「只寫測試與設計」。安全性靠順序保證：
+`.tmp` → 讀回逐 sample 驗證 → `os.replace` → 才選擇性刪來源。
+四個失敗階段各有參數化測試，斷言原檔 bytes 不變且無殘留 `.tmp`。
+
+明細 `experiments/results/flac_roundtrip_2026-09-03.md`（不進 git）。
+**未切換保存格式**，切換仍是待決策。
+
 ## 5. 已查證的事實更正
 
 這一節記錄夜間查證推翻既有文件敘述的地方，避免錯誤敘述繼續被引用。
@@ -203,14 +220,14 @@ E 標 `in_progress`、G 標 `planned`，這些是**執行進度**。同一欄兩
 roadmap：FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗保留原檔及實際容量比
 驗證；通過後才決定直接寫 FLAC 或背景轉換。**本輪只驗證，不切換保存格式。**
 
-- [ ] **T3.1** 確認 `soundfile` 的 FLAC 寫入可用（已是既有相依）。
-- [ ] **T3.2** `experiments/verify_flac_roundtrip.py`：對現有 wav 全量或大樣本做
+- [x] **T3.1** 確認 `soundfile` 的 FLAC 寫入可用（已是既有相依）。
+- [x] **T3.2** `experiments/verify_flac_roundtrip.py`：對現有 wav 全量或大樣本做
   PCM16 → FLAC → PCM16，逐 sample 比對（必須 **bit-exact**，不是近似）。
   任何一筆不符就是不通過，記錄該檔特徵。
-- [ ] **T3.3** 實測容量比：總 bytes、各時長區間的壓縮率、壓縮與解壓耗時。
+- [x] **T3.3** 實測容量比：總 bytes、各時長區間的壓縮率、壓縮與解壓耗時。
   這關係到 2 GiB 音訊護欄能多存多少，是決策的關鍵數字。
-- [ ] **T3.4** 寫入失敗保留原檔的行為設計與測試（只寫測試與設計，不改 production 寫入路徑）。
-- [ ] **T3.5** 結果寫成 `experiments/results/flac_roundtrip_2026-09-03.md`
+- [x] **T3.4** 寫入失敗保留原檔的行為設計與測試（只寫測試與設計，不改 production 寫入路徑）。
+- [x] **T3.5** 結果寫成 `experiments/results/flac_roundtrip_2026-09-03.md`
   （**注意：`experiments/results/` 不進 git**；結論摘要另寫進 CHANGELOG／roadmap）。
 
 ### T4 — A 線：評測指標 runner 骨架

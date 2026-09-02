@@ -122,6 +122,7 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `docs/index.html` — 互動式專案文件頁面
 - `scripts/search_logs.py` — log 品質掃描：確定性標籤（半形標點、簡體、空格、重複…）篩選有問題的段
 - `scripts/build_log_viewer.py` — 產生 `data/logs/viewer.html` 互動檢視器（標籤篩選 + 音訊播放）
+- `src/asr_input/storage/flac_archive.py` — wav→FLAC 安全轉檔（先寫 .tmp、驗證、`os.replace` 就位、最後才刪來源；失敗一律不動原檔）。**目前無 production 呼叫端**，只是把 roadmap 要求的安全規則寫成可測行為
 - `src/asr_input/eval/signals.py` — 離線錯誤訊號的**正本**：18 條確定性規則（延遲、重複、字形、標點、字元率、fallback 狀態…），只讀 DB 既有欄位、不碰模型
 - `scripts/scan_error_candidates.py` — 用上述訊號掃 `history.sqlite3`，輸出候選 + 同時長分布對照組 JSON 到 `data/logs/review/`（gitignore，內含逐字稿）
 - `scripts/build_review_queue.py` — 由候選 JSON 產生 `data/logs/review/queue.html`：逐段播放（Web Audio 從 job wav 切片）、三態標記，`--serve` 會把標記寫回 `marks.json`

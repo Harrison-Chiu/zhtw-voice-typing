@@ -317,8 +317,11 @@ VAD／capture／gap metadata、error history、correction candidate、corpus lab
 音訊格式現況與下一步：
 
 - Codec 驗收排在 D 線即時轉錄與 Tray 修復之後，本輪不切換保存格式。
-- 現況仍保存 PCM WAV。無損 FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗保留
-  原檔及實際容量比驗證；通過後才決定直接寫 FLAC 或背景轉換。
+- 現況仍保存 PCM WAV。無損 FLAC 是第一候選；三項驗證於 2026-09-03 完成（全量 542 檔，
+  539/539 有內容的檔 bit-exact，容量比 0.522，寫入失敗保留原檔的行為已設計並測試，
+  見 `src/asr_input/storage/flac_archive.py`）。**尚未決定是否切換**——驗證通過不等於
+  改格式，讀取端（審核頁、各腳本、`jobs.audio_path`）要一併處理才算完整方案。
+  已知邊界條件：0 frames 的 wav 無法編成 FLAC，遷移時必須略過而非視為失敗。
 - Opus／MP3 等有損格式只有在固定且可重現的 Whisper 解碼設定下，對真實錯誤案例做嚴格逐字
   交叉測試全部通過後才列入候選。
 - 2026-07-31 前置實驗從 120 段中抽 16 段各重跑 3 次，只有一個疑難 WAV 出現兩種文字；該段
@@ -368,8 +371,10 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 - **E 線資料／實驗後續**：先用真實大量 log 建立高 recall 錯誤候選與少量正常對照，再進行
   人工／便宜模型複核，升格並凍結 engine-specific、cross-model 與 capture/VAD corpus。不得只靠
   AI 想像錯誤類型，也不得把 >1.5 秒高相關 heuristic 誤寫成錯誤的完整定義。
-- **E 線 codec／容量後續**：目前維持 PCM16 WAV。FLAC 先做 lossless round-trip、失敗保留原檔
-  與容量實測；Opus／MP3 必須通過固定解碼設定下的真實錯誤案例逐字交叉測試。queue 容量上限、
+- **E 線 codec／容量後續**：目前維持 PCM16 WAV。FLAC 的 lossless round-trip、失敗保留原檔
+  與容量實測**已完成**（2026-09-03，容量比 0.522 → 同一個 2 GiB 護欄約 18.6 小時提高到
+  約 35.7 小時），待決的是切換方式（直接寫 FLAC 或背景轉換）與讀取端改動；
+  Opus／MP3 必須通過固定解碼設定下的真實錯誤案例逐字交叉測試。queue 容量上限、
   接近上限警告與更細 retention 淘汰順序，待 codec 與實際容量資料一起決定；不得靜默刪除工作。
 - **E 線修正／介面後續**：從已確認案例提出替換字或完整詞組，使用者確認後才寫規則並做整句
   回歸；不從修正紀錄自動修改 hotwords。待審超過三段時建立批次審核介面；完整歷史 viewer、
