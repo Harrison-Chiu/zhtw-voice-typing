@@ -21,6 +21,8 @@
 5. **人工審核（A／E 共同瓶頸）**：`scripts/build_review_queue.py` 產出的審核佇列
    （87 段候選 + 22 段對照）一旦有人聽過，同時解開 E 線訊號的 precision／recall
    與 A 線的 gold。這是目前擋住最多下游工作的單一項目。
+   佇列已有排序訊號可用（`experiments/preannotate_review_queue.py`，三來源分歧排序，
+   只決定聽的順序、不代替裁決），分歧最高的 9 段建議先聽。
 
 D/E 可在獨立 worktree 平行準備，但需遵守 roadmap 的共享檔案與整合邊界；F 暫緩。
 G-Phase 3 會動 `tray.py`，與 D 線衝突，不可同時進行。
