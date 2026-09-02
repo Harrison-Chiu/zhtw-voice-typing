@@ -5,7 +5,7 @@
 
 ## 2026-09-03
 
-- experiment: determinism 擴大重測（100 段種子分層隨機、不看標籤，每段每組 5 次）——production fallback 階梯 97/100 逐字一致、不一致的 3 段全在 <1s 且全是幻覺；固定 `temperature=0` 100/100 一致但只是把幻覺變穩定，且會讓 12 段的轉錄時間掉到 1.5 秒門檻以下、使現行幻覺偵測在部分短段失效 (pending)
+- experiment: determinism 擴大重測（100 段種子分層隨機、不看標籤，每段每組 5 次）——production fallback 階梯 97/100 逐字一致、不一致的 3 段全在 <1s 且全是幻覺；固定 `temperature=0` 100/100 一致但只是把幻覺變穩定，且會讓 12 段的轉錄時間掉到 1.5 秒門檻以下、使現行幻覺偵測在部分短段失效 (b591c7c)
 
 - docs: 修正 benchmark 提案與 roadmap 的實作位置記載——程式落在 `src/asr_input/eval/` 而非提案原寫的 `experiments/benchmark/`（理由：要被 `tests/` 匯入隨 pytest 跑），並把提案狀態改為「Phase 1／2 程式部分已落地、gold 仍是阻塞點」 (19f6f2b)
 - 盤點 `docs/index.html` 的落差並寫成 `docs/index-html-gaps.md`（未改版，翻新屬 F 線）：
