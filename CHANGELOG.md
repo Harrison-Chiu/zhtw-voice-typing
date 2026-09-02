@@ -8,7 +8,7 @@
   該頁最後更新於 2026-06-18、內容停在 v0.1.0，仍寫預設引擎是 Qwen3-ASR-1.7B、
   OpenCC 用 `s2twp`、config 只有四個區塊（現行 12 個），且把 VAD／快捷鍵／串流列為
   「下一步」——三者都已上線。另記下結構性問題：頁面是第二份架構說明，翻新前要先定
-  它與 `README.md`／`CLAUDE.md` 的職責邊界。頁面內無個人資料，不需額外隱私處理 (pending)
+  它與 `README.md`／`CLAUDE.md` 的職責邊界。頁面內無個人資料，不需額外隱私處理 (4a56599)
 - roadmap 狀態拆成「規格」與「執行」兩軸：先前宣告的字彙（`ready`／`needs-decision`／
   `exploration`／`deferred`／`done`）與各線實際寫的值（`in_progress`／`ready after A`／
   `validation`）對不上，因為一條線可以規格完備但沒排到（B），也可以有半套實作而規格
