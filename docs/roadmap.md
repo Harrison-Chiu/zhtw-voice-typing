@@ -46,14 +46,20 @@ G macOS 支援（取得 mac 後啟動；Phase 0 可先做，不需要機器）
 
 ### A — 評測基礎
 
-狀態：`ready`，第一優先。
+狀態：`in_progress`。2026-09-03 落地骨架：`src/asr_input/eval/` 下的
+`metrics.py`（所有指標共用同一份 Levenshtein 對齊）、`manifest.py`（公開 manifest／
+私密對應檔的 schema 與驗證）、`environment.py`（環境指紋）、`runner.py`（引擎無關的
+runner），CLI 為 `scripts/run_benchmark.py`。已用 5 段短音訊跑通 Smoke 層。
 
-近期交付：
+**卡在 gold transcript**：目前唯一能用的「gold」是既有的已採用輸出，量到的是重現性
+而非準確率。真正的 gold 需要人聽音訊，與 E 線的人工審核是同一個瓶頸。
 
-1. Smoke/Core/Stress manifest 與 config/environment fingerprint。
+剩餘交付：
+
+1. ~~environment fingerprint~~（已完成）；Smoke/Core/Stress manifest 仍待真實語料。
 2. 多引擎預標註、風險分層與雙 target gold。
-3. CER/MER、錯誤類型、決定性、P95 latency、RTF 與 VRAM。
-4. JSON schema、Markdown 摘要與互動 HTML dashboard。
+3. ~~CER/MER、錯誤類型、決定性~~（已完成）；P95 latency、VRAM 尚未收集。
+4. ~~JSON schema、Markdown 摘要~~（已完成）；互動 HTML dashboard 未做。
 5. 保存 baseline，讓 B/C 候選可用同一 gate 比較。
 
 詳細規格：`docs/asr-benchmark-proposal.md`。

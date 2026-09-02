@@ -125,6 +125,52 @@ T3.4 產出 `src/asr_input/storage/flac_archive.py` + `tests/test_flac_archive.p
 明細 `experiments/results/flac_roundtrip_2026-09-03.md`（不進 git）。
 **未切換保存格式**，切換仍是待決策。
 
+### T4 評測指標與 runner 骨架 — 完成（`observed`）
+
+四個新模組（全部在 `src/asr_input/eval/`）＋ 62 項新測試，全套 **315 passed**：
+
+- `metrics.py`（T4.1）：所有指標都建在同一份 Levenshtein 對齊上，
+  CER／錯誤型態分解／Punctuation F1／插入串因此描述的是同一個對齊結果。
+  對齊的 tie-break 固定為 sub → del → ins，否則同一組 pair 的
+  substitution／deletion 數會隨實作細節漂移。
+  Punctuation F1 **按位置計分**（比對齊後的位置，不是比數量）——標點放錯子句
+  在數量比對下會被算成命中。
+- `test_metrics.py`（T4.2）：29 項，每個期望值手算。過程中抓到的三個錯都是
+  **我自己的手算錯誤而非程式錯誤**（等長 pair 逼出 3 個 substitution、
+  假 s2t 表漏了兩個字、`这是简体` 只改 3 字不是 4 字）——這正是 T4.2 的用途。
+- `manifest.py`（T4.3）：manifest 只放匿名 ID／標籤／時長／音訊 hash／split，
+  私密對應檔（音訊路徑＋gold 逐字稿）放 `data/logs/` 底下。
+  `validate_manifest()` 會**主動拒絕**帶 `audio_path`／`transcript`／`gold` 等鍵的
+  項目，`save_manifest()` 先驗證自己的輸出再寫檔——repo 是公開的，
+  逐字稿進了歷史就很難清乾淨，寧可在這裡直接失敗。
+- `environment.py`（T4.4）：GPU／driver／OS build／Python／套件版本／
+  benchmark 前的 GPU idle memory。走 `nvidia-smi` CLI 而不是 torch，
+  因為錄音路徑現在完全不 import torch，指紋不該把 torch 拖回進程。
+  每個探針失敗都記錄原因而非丟例外。不收集主機名、使用者名或家目錄路徑，
+  所以指紋可以直接貼進公開 issue。
+- `runner.py` + `scripts/run_benchmark.py`（T4.5）：runner 收一個
+  `transcribe(path) -> str` callable，本身不 import 任何 ASR 引擎（無 GPU 也能測）。
+  彙總採 **micro**（總錯誤 ÷ 總參考長度），macro 平均會讓 2 秒的段和 60 秒的段等重。
+  單一樣本失敗只記錄不中斷整輪。結果 JSON **只存「輸出是否為空」而不存輸出文字**。
+
+**已跑通 Smoke 層（`observed`）**：用 55 個候選 job 中的 5 個單段短音訊
+（3–8s，共 28.05s）臨時組了一份 manifest 跑完整條路徑，產出 JSON + Markdown 到
+`data/logs/benchmark/runs/`（gitignored）。這份 gold 是**既有的已採用輸出**，
+所以量到的是「重現性」不是「準確率」，真正的 gold 需要人聽音訊。
+
+跑的過程中發現一個會誤導人的預設：runner 一開始只評分**引擎原始輸出**，
+但 log 裡的既有文字是**後處理過的**。同一批音訊，raw 對 processed gold 是
+Strict CER 7.96%／標點 recall 0.556；補上後處理後是 **1.77%／recall 1.0**。
+差額幾乎全是後處理本來就負責的標點與字形。因此 `run_benchmark.py` 加了
+`--stage {processed,raw}`，預設 `processed`（使用者實際拿到的文字），
+並把 stage 記進結果的 engine 欄位——混用兩邊會憑空製造 6 個百分點的 CER。
+
+另外，`normalized_cer`（1.92%）可能高於 `strict_cer`（1.77%）：正規化會移除標點，
+分母跟著變小，錯誤數更少但比率反而升高。這是定義使然，不是 bug。
+
+`speed.realtime_factor` 只是吞吐量報告，模組 docstring 已明寫它**不參與**任何品質或
+幻覺判斷（幻覺判斷用絕對轉錄時間）。
+
 ## 5. 已查證的事實更正
 
 這一節記錄夜間查證推翻既有文件敘述的地方，避免錯誤敘述繼續被引用。
@@ -235,18 +281,18 @@ roadmap：FLAC 是第一候選，先以 PCM round-trip checksum、寫入失敗�
 規格正本：`docs/asr-benchmark-proposal.md` 第 3 節。
 **本輪不碰 gold transcript**（需要人聽音訊），只做不依賴 gold 的部分：指標實作與 schema。
 
-- [ ] **T4.1** `src/asr_input/eval/metrics.py`：Strict CER、Normalized CER、
+- [x] **T4.1** `src/asr_input/eval/metrics.py`：Strict CER、Normalized CER、
   MER（CJK 以字、英數以詞）、Punctuation F1（逗號／句號／問號／頓號分開報）、
   deletion／insertion／substitution 分解、Traditional consistency（簡體殘留率、
   OpenCC 改動率）、Repetition degeneration、Determinism（N 次的 unique output 數與
   exact-match 比例）。純函數，好測。
-- [ ] **T4.2** 用**合成資料**寫單元測試：手工構造已知編輯距離的 pair，驗證每個指標。
+- [x] **T4.2** 用**合成資料**寫單元測試：手工構造已知編輯距離的 pair，驗證每個指標。
   這是本任務的主要價值——指標本身算錯的話後面所有結論都不能信。
-- [ ] **T4.3** manifest／結果的 JSON schema：sample ID（匿名）、標籤、時長、音訊 hash、
+- [x] **T4.3** manifest／結果的 JSON schema：sample ID（匿名）、標籤、時長、音訊 hash、
   dev/test 切分。**音訊與逐字稿不進 git，只進 manifest 的私密對應檔。**
-- [ ] **T4.4** environment fingerprint 收集：GPU、driver、Windows build、Python、CUDA、
+- [x] **T4.4** environment fingerprint 收集：GPU、driver、Windows build、Python、CUDA、
   cuDNN、CTranslate2 版本、模型 revision、benchmark 前 GPU idle memory。
-- [ ] **T4.5** runner 骨架 + Markdown 摘要輸出。可以先只跑得動 Smoke 層。
+- [x] **T4.5** runner 骨架 + Markdown 摘要輸出。可以先只跑得動 Smoke 層。
 
 ### T5 — 延伸（前面做完才做，或前面卡住時的替代）
 

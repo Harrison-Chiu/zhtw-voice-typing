@@ -126,9 +126,14 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `src/asr_input/eval/signals.py` — 離線錯誤訊號的**正本**：18 條確定性規則（延遲、重複、字形、標點、字元率、fallback 狀態…），只讀 DB 既有欄位、不碰模型
 - `scripts/scan_error_candidates.py` — 用上述訊號掃 `history.sqlite3`，輸出候選 + 同時長分布對照組 JSON 到 `data/logs/review/`（gitignore，內含逐字稿）
 - `scripts/build_review_queue.py` — 由候選 JSON 產生 `data/logs/review/queue.html`：逐段播放（Web Audio 從 job wav 切片）、三態標記，`--serve` 會把標記寫回 `marks.json`
+- `src/asr_input/eval/metrics.py` — 評測指標**正本**：Strict／Normalized CER、MER（CJK 以字、英數以詞）、Punctuation F1（按對齊位置計分）、錯誤型態分解、繁體一致性、重複退化、決定性。所有指標共用同一份 Levenshtein 對齊
+- `src/asr_input/eval/manifest.py` — benchmark manifest／結果 schema。manifest 只有匿名 ID、標籤、時長、音訊 hash、split；音訊路徑與 gold 逐字稿只在 `data/logs/` 底下的私密對應檔。`validate_manifest()` 會拒絕帶路徑或逐字稿的項目
+- `src/asr_input/eval/environment.py` — benchmark 環境指紋（GPU／driver／OS build／Python／套件版本／跑之前的 GPU idle memory）。走 `nvidia-smi` CLI 不 import torch；探針失敗記錄原因而非丟例外；不收集主機名與家目錄路徑
+- `src/asr_input/eval/runner.py` — benchmark runner：收一個 `transcribe(path) -> str` callable，本身不 import ASR 引擎。micro 彙總、單樣本失敗不中斷、結果只記「輸出是否為空」不記文字
+- `scripts/run_benchmark.py` — runner CLI（`--tier smoke|dev|full`、`--repeats`、`--stage processed|raw`、`--dry-run`）。結果寫到 `data/logs/benchmark/runs/`（gitignore）
 - `scripts/` — 手動執行、可重複使用的工具：測試驅動（`test_audio_file.py`、`test_streaming.py`、
   `transcribe_file.py`）、log 工具（`search_logs.py`、`build_log_viewer.py`、`export_history.py`、
-  `import_legacy_logs.py`、`scan_error_candidates.py`、`build_review_queue.py`）、Windows 啟動器（`start_tray.bat`／`.vbs`、`create_desktop_shortcut.ps1`）。
+  `import_legacy_logs.py`、`scan_error_candidates.py`、`build_review_queue.py`、`run_benchmark.py`）、Windows 啟動器（`start_tray.bat`／`.vbs`、`create_desktop_shortcut.ps1`）。
   一次性的模型評測不放這裡，放 `experiments/`
 - `experiments/` — 一次性實驗腳本，結果在 `experiments/results/`
 
@@ -159,6 +164,8 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - **CUDA 暖機已移除（空轉，2026-06-28 關閉／2026-09-01 刪除）**：tray 啟動原有 `torch.zeros(1).to(cuda)` 暖機，本意是提前觸發 CUDA context 初始化以縮短首次推論延遲。但 faster-whisper 推論走 CTranslate2（自帶獨立 CUDA 初始化，不共用 PyTorch context）、Silero VAD 跑在 CPU → 進程內沒有任何 PyTorch GPU 工作會用到這個 context，暖機純空轉（實測 ~0.1s）。2026-06-28 先改由 config `startup.cuda_warmup` 控制、預設 `false`，保留開關給未來；但暖機呼叫本身在後續重構中被拿掉，設定只剩讀進 `tray.py` 一個沒人用的屬性。2026-09-01 VAD 改走 ONNX、錄音路徑完全不 import torch 後，該開關連可預期的用途都沒了，**已刪除 `startup` config 區塊與 `self._cuda_warmup`**。日後若真的改用 PyTorch-based ASR 引擎或讓 VAD 上 GPU，再依當時情況重新實作即可（一行暖機，不值得為它留死設定）。
 - **tray 首次載入 ~27s 的歸因（已測，2026-06-28）**：啟動計時顯示瓶頸全在「載 Whisper」（暖機僅 0.1s、載 VAD ~1.2s）。大宗是**首次冷讀磁碟**——CTranslate2/cuDNN 等原生 DLL（隨 `import faster_whisper` 載入）+ ~2GB 權重檔（`WhisperModel()` 建構時讀進 GPU）。卸載→重載快很多，因 DLL 已常駐進程、權重已進 OS 檔案快取、CT2 已初始化，只剩「把已快取權重再讀進 GPU」。細分腳本 `experiments/profile_cold_start.py`（熱快取下各階段總和 ~9.5s，遠低於冷啟的 27.7s；要量真冷啟須重開機後第一件事就跑）
 - **無頭啟動被 Win11 EcoQoS 節流（已測+已修，2026-07-07）**：`start_tray.vbs` 以 `WindowStyle 0`（隱藏、無前景視窗）啟動 → Win11 把本行程判為背景並套 EcoQoS（效率模式），把驅動 CUDA 的多執行緒趕到 E-core／降頻。實測（同段音訊重複解碼）：隱藏啟動 faster-whisper 中位數 **~1.1s（抖 0.7–1.4s）**，`start_tray.bat`（前景終端）不受影響。修法：`tray.py:main()` 開頭呼叫 `_optout_ecoqos()`，用 `SetProcessInformation(ProcessPowerThrottling, EXECUTION_SPEED 控制 + StateMask=0)` 明確關閉節流 → 隱藏啟動 **~0.46s（快 2.4×、變異幾乎歸零）**，前景啟動無害。**只 EcoQoS opt-out 就夠**，`timeBeginPeriod(1)` 拆開單測完全無效（已排除）。診斷陷阱：**單執行緒 tight-loop CPU 探針測不到**（頻率不變、仍在 P-core），因為節流打的是多執行緒／驅動 GPU 的那批，要用真實解碼 workload 才量得到
+- **benchmark 評分對象要與 gold 同一階段（2026-09-03 實測）**：`scripts/run_benchmark.py` 的 `--stage` 預設 `processed`，也就是評分使用者實際拿到的文字（含標點正規化與 OpenCC）。起因是 runner 一開始只評分引擎原始輸出，而 log 裡的既有文字是後處理過的：同一批 5 段短音訊，raw 對 processed gold 是 Strict CER 7.96%／標點 recall 0.556，補上後處理後是 1.77%／1.0，差額幾乎全是後處理本來就負責的標點與字形。要比較引擎本身才用 `--stage raw`，且 gold 也必須是未後處理的。stage 會記進結果 JSON 的 engine 欄位，避免事後分不清兩種數字。另注意 `normalized_cer` 可能高於 `strict_cer`（實測 1.92% vs 1.77%）——正規化移除標點使分母變小，錯誤數更少但比率更高，這是定義使然
+- **benchmark 的速度數字不參與品質判斷**：`runner.py` 的 `speed.realtime_factor` 只是吞吐量報告。幻覺判斷一律用絕對轉錄時間（見上方短段幻覺分級門檻），不得改用 transcribe/audio 比例
 - **Python 環境**：uv 管理（鎖檔 `uv.lock`），Python 3.12，PyTorch CUDA 12.4 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest

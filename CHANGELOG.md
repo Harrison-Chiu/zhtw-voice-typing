@@ -4,6 +4,19 @@
 本檔只記「已完成」；待辦見 `TODO.md`。
 
 ## 2026-09-03
+- 評測骨架（A 線）：新增 `src/asr_input/eval/` 的 `metrics.py`／`manifest.py`／
+  `environment.py`／`runner.py` 與 CLI `scripts/run_benchmark.py`。所有指標
+  （Strict／Normalized CER、MER、Punctuation F1、錯誤型態分解、繁體一致性、重複退化、
+  決定性）共用同一份 Levenshtein 對齊，tie-break 固定 sub → del → ins；
+  Punctuation F1 按對齊位置計分，不是比標點數量。manifest 只放匿名 ID／標籤／時長／
+  音訊 hash／split，帶 `audio_path`／`transcript`／`gold` 等鍵會被 `validate_manifest()`
+  拒絕（repo 公開，逐字稿只進 `data/logs/` 下的私密對應檔）。彙總採 micro，
+  單樣本失敗只記錄不中斷整輪，結果 JSON 只記「輸出是否為空」不記文字。
+  新增 62 項測試（全套 315 passed）。已跑通 Smoke 層；真正的 gold 待人工審核 (pending)
+- benchmark 評分對象需與 gold 同一階段：同一批音訊，引擎原始輸出對「後處理過的 gold」
+  是 Strict CER 7.96%／標點 recall 0.556，補上後處理後為 1.77%／1.0。
+  `run_benchmark.py` 因此加 `--stage {processed,raw}`，預設 `processed`（使用者實際拿到的
+  文字）並把 stage 記進結果 (pending)
 - FLAC 無損保存驗證（只驗證，未切換保存格式）：`experiments/verify_flac_roundtrip.py`
   對 `data/logs/audio/` 全量 542 檔做 PCM16 → FLAC → PCM16 往返，逐 sample 比對
   **539/539 bit-exact**（另 3 檔是 44 bytes、0 frames 的空 wav，libsndfile 無法為零長度
