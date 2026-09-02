@@ -62,6 +62,17 @@
       上一輪只改 B1 論述段、漏掉階段名，而階段名才是「下一步做什麼」的必讀處。
       三處已全部改名為「門檻的裝置校準」；並把這條決策補進 `CLAUDE.md`
       （原本只在不會自動載入的 roadmap 裡，是復發的根本原因）。
+- [x] T1.1–T1.6 平台抽象層落地 (`1d02dfe`)：torch 加 darwin marker、
+      `platform/clipboard_backends.py`＋`platform/device.py`＋`paths.py`、
+      新增 22 項測試（共 210 passed）、`scripts/test_audio_file.py` 實跑 27 段正常。
+      過程中抓到一個真 bug：device 解析原用單一 note 變數，macOS 的 cuda→cpu 說明會被
+      後續 float16→int8 的說明覆蓋，使用者只看得到第二個原因；已改為累積後合併。
+      另記錄一項實測：`import ctranslate2` 冷啟 ~73s 且會把 torch 拉進 `sys.modules`
+      （observed），因此 CUDA 探測必須惰性、macOS 路徑在探測前就短路。
+- [x] T1.7 文件更新 (`4a98b0b`)：macos-port-plan A 表加狀態欄、Phase 0 標完成並註明
+      「未在 macOS 上驗證」、roadmap G 線狀態、CLAUDE.md 架構節、CHANGELOG 兩條。
+      依 §5.1，路徑修正在 CHANGELOG 寫成預防性修正，不寫成修既有故障。
+- [x] T1.8 `git merge --no-ff` 回 main (`8cfd51a`)，hash 回填 (`0f023ef`)。
 - [ ] （以下待執行）
 
 ---
@@ -109,27 +120,27 @@ E 標 `in_progress`、G 標 `planned`，這些是**執行進度**。同一欄兩
 驗收：`pytest` 全綠 + `scripts/test_audio_file.py` 能跑出結果。**不碰 `tray.py`**
 （A4／A5 屬 Phase 3，會與 D 線衝突）。
 
-- [ ] **T1.1** `pyproject.toml`：torch／torchaudio 的 `[tool.uv.sources]` 加
+- [x] **T1.1** `pyproject.toml`：torch／torchaudio 的 `[tool.uv.sources]` 加
   `marker = "sys_platform != 'darwin'"`。注意不要動到 `uv.lock` 的其他部分；改完確認
   `uv sync` 或既有 `.venv` 仍可用。若 lock 檔會大幅重寫，先只改 pyproject 並記錄。
-- [ ] **T1.2** 建 `src/asr_input/platform/` 套件，第一個成員是剪貼簿：
+- [x] **T1.2** 建 `src/asr_input/platform/` 套件，第一個成員是剪貼簿：
   定義 `ClipboardBackend` 協定，`WindowsClipboard`（現行 PowerShell 行為，語意不變）、
   `MacClipboard`（`pbcopy`，**以 stdin 餵入**，順帶消掉現行 PowerShell 單引號跳脫的
   脆弱點）、`NullClipboard`（其他平台，只警告不 crash）。
   `output/clipboard.py` 改成薄包裝，對外 API 不變。
-- [ ] **T1.3** `asr/__init__.py:build_engine()` 加 device／compute_type 自動偵測：
+- [x] **T1.3** `asr/__init__.py:build_engine()` 加 device／compute_type 自動偵測：
   config 明確指定就尊重；未指定或指定不可用時，Windows/Linux 有 CUDA → `cuda`+`float16`，
   否則 `cpu`+`int8`。**不改使用者 `config.yaml` 的既有值**，改用「未設定才推導」的語意。
-- [ ] **T1.4** 相對路徑改以套件位置解析：`output/history_store.py:20`、
+- [x] **T1.4** 相對路徑改以套件位置解析：`output/history_store.py:20`、
   `output/session_log.py:18`、`output/transcript_log.py:7`。保留可用參數覆寫。
   注意：現有 DB 在 `data/logs/history.sqlite3`，解析結果必須指向同一個檔，
   **不可讓既有資料看起來消失**。改完實際確認能讀到 537 筆 jobs。
-- [ ] **T1.5** 新增 `tests/test_platform_layer.py`：剪貼簿後端選擇、`pbcopy` 參數組成
+- [x] **T1.5** 新增 `tests/test_platform_layer.py`：剪貼簿後端選擇、`pbcopy` 參數組成
   （用假的 runner，不真的呼叫）、device 推導矩陣、路徑解析在不同 cwd 下一致。
-- [ ] **T1.6** 驗收：`pytest` 全綠、`ruff` clean、`scripts/test_audio_file.py` 實跑一次。
-- [ ] **T1.7** 更新 `docs/macos-port-plan.md`（Phase 0 標完成、A1–A3 標解法已落地）、
+- [x] **T1.6** 驗收：`pytest` 全綠、`ruff` clean、`scripts/test_audio_file.py` 實跑一次。
+- [x] **T1.7** 更新 `docs/macos-port-plan.md`（Phase 0 標完成、A1–A3 標解法已落地）、
   `docs/roadmap.md` G 線狀態、`CHANGELOG.md`、`CLAUDE.md` 架構節新增 `platform/`。
-- [ ] **T1.8** `git merge --no-ff` 回 `main`。
+- [x] **T1.8** `git merge --no-ff` 回 `main`。
 
 ### T2 — E 線：真實 log 高 recall 錯誤候選與審核佇列
 
