@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from asr_input.output.clipboard import ClipboardOutput
 from asr_input.paths import data_dir, logs_dir, project_root
 from asr_input.platform import (
     MacClipboard,
@@ -18,7 +19,6 @@ from asr_input.platform import (
     resolve_device,
     select_clipboard_backend,
 )
-from asr_input.output.clipboard import ClipboardOutput
 
 
 class RecordingRunner:
