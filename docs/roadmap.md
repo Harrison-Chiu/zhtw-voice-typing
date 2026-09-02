@@ -16,6 +16,7 @@
 | `CLAUDE.md` | 現行架構、已落地能力與已確立的技術決策 |
 | `CHANGELOG.md` | 已完成且已提交的變更 |
 | `README.md` | 使用者安裝、使用方式與文件入口 |
+| `docs/index-html-gaps.md` | `docs/index.html` 與現況的落差清單（F 線翻新前的輸入） |
 
 ## 狀態標示
 
@@ -432,6 +433,11 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 範圍：LICENSE、版本統一、CI、乾淨 Windows 安裝 smoke test、Windows/NVIDIA/CUDA 相容性
 檢查、首次模型下載與失敗重試、portable onedir、升級時保留使用者設定、發布/開發設定分離，
 以及 `docs/index.html` 翻新。
+
+`docs/index.html` 停在 v0.1.0（最後更新 2026-06-18），落差已盤點於
+[`docs/index-html-gaps.md`](index-html-gaps.md)：預設引擎、OpenCC 模式、config 範例與
+「後續計畫」都與現況不符，串流／Tray／history／評測基礎完全沒提到。翻新時要一併決定
+它與 `README.md`／`CLAUDE.md` 的職責邊界，否則會再生出一份會漂移的架構抄本。
 
 公開版仍以 faster-whisper 為預設；Qwen 與預設停用的 OpenRouter adapter 是否納入正式安裝，
 發布前依實際 import/打包稽核決定，或以額外 dependency group 隔離。模型快取、
