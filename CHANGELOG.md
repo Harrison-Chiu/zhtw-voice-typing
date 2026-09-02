@@ -9,7 +9,7 @@
   `validation`）對不上，因為一條線可以規格完備但沒排到（B），也可以有半套實作而規格
   還在等實驗（C）。新增總表與 `blocked` 值，把跨線前置移到獨立欄位而非塞進狀態值；
   同時劃掉 D 線已由 F 線完成的「支援開機啟動」，並把 TODO 的 A 線與 G-Phase 0 入口
-  更新為現況，新增「人工審核」為 A／E 共同瓶頸 (pending)
+  更新為現況，新增「人工審核」為 A／E 共同瓶頸 (54e1a61)
 - 評測骨架（A 線）：新增 `src/asr_input/eval/` 的 `metrics.py`／`manifest.py`／
   `environment.py`／`runner.py` 與 CLI `scripts/run_benchmark.py`。所有指標
   （Strict／Normalized CER、MER、Punctuation F1、錯誤型態分解、繁體一致性、重複退化、
