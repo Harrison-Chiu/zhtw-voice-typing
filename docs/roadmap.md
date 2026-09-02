@@ -400,8 +400,10 @@ Codec／fallback 回歸集應先從真實 log 的 fallback、絕對轉錄時間 
 少數幾處，而共用的 pipeline 才是持續在改的部分。
 
 跨線依賴：
-- G-Phase 2（幻覺門檻改成 RTF 相對比）與 B 線的解碼決定性實驗都會動
-  `streaming.py` 的品質判斷路徑，兩者需協調先後。該項即使不移植 macOS 也值得做。
+- G-Phase 2（幻覺門檻的裝置校準）與 B 線的解碼決定性實驗都會動
+  `streaming.py` 的品質判斷路徑，兩者需協調先後。
+  該階段做的是「在該裝置上重量基準、把絕對秒門檻移進 device profile」，
+  **不是改用 transcribe/audio ratio**——後者為本線上方明文禁止的做法。
 - G-Phase 4（打包）與 F 線範圍重疊，啟動前先確認邊界。
 - G-Phase 3 會動 `tray.py`，與 D 線衝突，不可同時進行。
 

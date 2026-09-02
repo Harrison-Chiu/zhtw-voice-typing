@@ -126,8 +126,14 @@ macOS 沒有 EcoQoS，但背景 app 有 App Nap／QoS 降級。是否會重演 W
 驗證的，換引擎必須重驗——whisper.cpp 與 mlx-whisper 都有語意對應的 prompt 參數，但輸出
 機率分布不同，不能直接沿用結論。
 
-**Phase 2 — B1 門檻 RTF 相對化**
-建議即使不移植 macOS 也做，它修的是一類通病。
+**Phase 2 — B1 門檻的裝置校準**
+在 macOS 上重新量測並重建凍結回歸集，把 `hallucination_threshold_sec` 移進 device
+profile，即 B1 的解法 (b)。
+
+**此階段不是「改用 RTF 相對比」。** 本文件 2026-09-03 之前把 Phase 2 命名為
+「門檻 RTF 相對化」，與 `docs/roadmap.md` E 線「不得改用 transcribe/audio ratio」
+的既定決策衝突，已撤回；理由與驗算見上方 B1 的刪除線段落。
+沿用絕對秒門檻、只換校準基準，是唯一與 roadmap 相容的路線。
 
 **Phase 3 — tray／hotkey macOS 化**（B2、A4、A5）
 最貴，待前面都通了再評估。
