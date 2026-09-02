@@ -13,12 +13,12 @@
   （`import ctranslate2` 會連帶載入 torch）。另新增 `paths.py`，把 history／session log 的
   相對路徑改以套件位置解析——這是為 macOS LaunchAgent 不保證 cwd 做的**預防性**修正，
   Windows 兩條啟動路徑（`.vbs` 設 CurrentDirectory、`.bat` 有 `cd /d`）本來就正確，
-  不是修既有故障。新增 22 項測試（共 210 passed）；不碰 `tray.py` (pending)
+  不是修既有故障。新增 22 項測試（共 210 passed）；不碰 `tray.py` `(1d02dfe)`
 - 撤回文件中「幻覺門檻改用 RTF 相對比」的提案並收斂到單一決策點：該提案與 `docs/roadmap.md`
   E 線的明文禁令衝突，卻仍被反覆提起。追查後確認不是記憶問題而是文件問題——決策只寫在
   不會自動載入的 roadmap，而 `docs/macos-port-plan.md` 把 Phase 2 直接命名為「門檻 RTF
   相對化」、roadmap G 線的跨線依賴又照抄該階段名，前一次修正只改了論述段、漏掉階段名。
-  三處已改為「門檻的裝置校準」並附撤回理由與驗算，決策本身寫進 `CLAUDE.md` (pending)
+  三處已改為「門檻的裝置校準」並附撤回理由與驗算，決策本身寫進 `CLAUDE.md` `(1ab671f, 3777261)`
 
 ## 2026-09-01
 - README 補「為什麼有這個專案」一節與四條技術功能：動機以一段改寫後的對話引言帶出
