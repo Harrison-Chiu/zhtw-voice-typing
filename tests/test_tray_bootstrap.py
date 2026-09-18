@@ -414,20 +414,6 @@ def test_capture_fault_plays_the_alert_sound_once_enabled(monkeypatch):
     assert played == [True]
 
 
-def test_near_zero_level_never_plays_the_alert_sound(monkeypatch):
-    """Ordinary silence is not a fault; only a dead data stream makes noise."""
-    app = _watchdog_app(monkeypatch)
-    app._alert_sound_enabled = True
-    played = []
-    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
-
-    app._near_zero_warning_sec = 0.0
-    app._on_input_level(0.0)
-    app._on_input_level(0.0)
-
-    assert played == []
-
-
 def test_model_ready_mid_capture_catches_up_then_accepts_live_segment_once(monkeypatch):
     class FakeRecording:
         recording = True
@@ -530,3 +516,59 @@ def test_persistence_failure_becomes_visible_and_releases_stop_feedback(monkeypa
     assert app._stop_feedback is False
     assert app._failed_jobs[0] == (result, None)
     assert app._lifecycle.snapshot.capture is CaptureState.ERROR
+
+
+def test_recording_that_never_had_audio_sounds_the_alert(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+    app._near_zero_warning_sec = 0.0
+
+    app._on_input_level(0.0)
+    app._on_input_level(0.0)
+
+    assert played == [True]
+
+
+def test_pause_after_speaking_stays_silent(monkeypatch):
+    """A gap mid-sentence is ordinary; only a wholly silent capture alerts."""
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+    app._near_zero_warning_sec = 0.0
+
+    app._on_input_level(0.5)
+    app._on_input_level(0.0)
+    app._on_input_level(0.0)
+
+    assert played == []
+
+
+def test_no_speech_alert_fires_at_most_once_per_capture(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+
+    app._alert_no_speech()
+    app._alert_no_speech()
+    assert played == [True]
+
+    # A new capture re-arms it.
+    app._start_capture()
+    app._alert_no_speech()
+    assert played == [True, True]
+
+
+def test_no_speech_alert_can_be_turned_off(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    app._alert_on_no_speech = False
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+
+    app._alert_no_speech()
+
+    assert played == []

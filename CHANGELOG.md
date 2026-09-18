@@ -19,6 +19,20 @@
   macOS `osascript -e beep`／其他平台靜音），由 `select_alert_sound()` 依平台挑選。
   只有上述擷取故障會發聲，其餘通知維持靜音；後端一律不丟例外（回傳 bool），
   避免沒有音效裝置時把 watchdog 執行緒帶掉。可用 `microphone.alert_sound: false` 關閉 (64e523a)
+- feat(tray): 裝置正常但「錄了等於沒錄」時也發出警示音。前一條只防資料流中斷；
+  實測把麥克風關掉後裝置仍持續送出靜音資料，watchdog 完全不觸發，log 顯示
+  `錄音完成：9.4s ... (0 個語音片段)`，使用者只有工作列一個 `!` 符號可看，
+  9 秒與 14 秒的錄音就這樣白費。現在兩種情況會出聲：整段錄音從第一個 sample 起
+  就持續近零（判斷條件是「從未有過高於門檻的音量」，所以講到一半停頓不會響），
+  以及停止時完全沒有語音片段（此時另補一則通知，因為後續不會有結果通知）。
+  每次錄音最多響一次，`microphone.alert_on_no_speech` 可關閉。
+  同時移除 `test_near_zero_level_never_plays_the_alert_sound`——該測試斷言的
+  「近零一律不出聲」正是本次修正的行為，其意圖由新的
+  `test_pause_after_speaking_stays_silent` 承接 (pending)
+- feat(scripts): 新增 `scripts/test_alert_sound.py`，印出目前生效的警示音開關、後端與
+  兩個門檻並試放一次。動機是上一輪交付的警示音沒有任何方式可以驗證——它只在真實故障時
+  才響，無法手動觸發，導致「沒聽到」分不清是功能壞了還是根本沒觸發。腳本明確標示
+  後端回傳的 `True` 只代表呼叫未拋例外、不保證真的出聲 (pending)
 - docs(todo): 移除已完成的待辦——repo 已改名為 `zhtw-voice-typing`、本機 remote URL 已更新，
   領先的 commit 也已推送 (64e523a)
 

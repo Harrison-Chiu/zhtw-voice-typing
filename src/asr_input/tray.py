@@ -264,6 +264,9 @@ class TrayApp:
         self._no_data_error_sec = 3.0
         self._alert_sound = select_alert_sound()
         self._alert_sound_enabled = True
+        self._alert_on_no_speech = True
+        self._heard_any_audio = False
+        self._no_speech_alerted = False
         self._tray: pystray.Icon | None = None
         self._stop_feedback = False
         self._setup_error: str | None = None
@@ -380,6 +383,7 @@ class TrayApp:
         self._no_data_warning_sec = float(microphone_cfg.get("no_data_warning_sec", 1.0))
         self._no_data_error_sec = float(microphone_cfg.get("no_data_error_sec", 3.0))
         self._alert_sound_enabled = bool(microphone_cfg.get("alert_sound", True))
+        self._alert_on_no_speech = bool(microphone_cfg.get("alert_on_no_speech", True))
         history_cfg = self._config.get("history", {})
         self._recent_results_enabled = history_cfg.get("recent_results_enabled", True)
         self._recent_results_limit = history_cfg.get("recent_results_limit", 20)
@@ -623,6 +627,8 @@ class TrayApp:
     def _start_capture(self) -> None:
         self._input_warning = None
         self._near_zero_since = None
+        self._heard_any_audio = False
+        self._no_speech_alerted = False
         with self._live_lock:
             self._capture_generation += 1
             self._stop_feedback = False
@@ -673,6 +679,12 @@ class TrayApp:
                 f"({len(result.segments)} 個語音片段)",
                 flush=True,
             )
+            if not result.segments:
+                # Nothing was captured, so there will be no result notification
+                # later to tell the user the recording was wasted.
+                message = f"這次錄音 {result.duration_sec:.1f} 秒沒有偵測到語音"
+                _silent_notify(self._tray, message, "ASR Input 沒有錄到聲音")
+                self._alert_no_speech()
         except Exception as exc:
             message = f"{type(exc).__name__}: {exc}"
             with self._lock:
@@ -1177,7 +1189,14 @@ class TrayApp:
             ):
                 self._input_warning = near_zero_message
                 _silent_notify(self._tray, near_zero_message, "ASR Input 麥克風提醒")
+                # Only when this capture has never carried audio at all. Pausing
+                # mid-sentence is ordinary and must stay silent; a mic that was
+                # muted or turned off produces a capture that is silent from the
+                # first sample, and that one is worth interrupting the user for.
+                if not self._heard_any_audio:
+                    self._alert_no_speech()
         else:
+            self._heard_any_audio = True
             self._near_zero_since = None
             if self._input_warning == near_zero_message:
                 self._input_warning = None
@@ -1218,6 +1237,18 @@ class TrayApp:
             self._alert_sound.play()
         except Exception as exc:  # pragma: no cover - backends already swallow
             print(f"麥克風警示音效失敗：{exc}", flush=True)
+
+    def _alert_no_speech(self) -> None:
+        """Sound the "this recording captured nothing" alert, at most once.
+
+        Distinct from the capture-fault alert: the device is healthy and frames
+        keep arriving, so nothing here is broken — the recording is simply being
+        wasted, which the user can only fix while it is still running.
+        """
+        if not self._alert_on_no_speech or self._no_speech_alerted:
+            return
+        self._no_speech_alerted = True
+        self._alert()
 
     def _check_capture_health(self) -> None:
         """Escalate on elapsed silence of the *data stream*, not of the audio.
