@@ -28,11 +28,11 @@
   每次錄音最多響一次，`microphone.alert_on_no_speech` 可關閉。
   同時移除 `test_near_zero_level_never_plays_the_alert_sound`——該測試斷言的
   「近零一律不出聲」正是本次修正的行為，其意圖由新的
-  `test_pause_after_speaking_stays_silent` 承接 (pending)
+  `test_pause_after_speaking_stays_silent` 承接 (b83a61e)
 - feat(scripts): 新增 `scripts/test_alert_sound.py`，印出目前生效的警示音開關、後端與
   兩個門檻並試放一次。動機是上一輪交付的警示音沒有任何方式可以驗證——它只在真實故障時
   才響，無法手動觸發，導致「沒聽到」分不清是功能壞了還是根本沒觸發。腳本明確標示
-  後端回傳的 `True` 只代表呼叫未拋例外、不保證真的出聲 (pending)
+  後端回傳的 `True` 只代表呼叫未拋例外、不保證真的出聲 (b83a61e)
 - docs(todo): 移除已完成的待辦——repo 已改名為 `zhtw-voice-typing`、本機 remote URL 已更新，
   領先的 commit 也已推送 (64e523a)
 
