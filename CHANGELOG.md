@@ -14,13 +14,13 @@
   改輪詢頻率不會連帶改變使用者等待的時間。另依 `callback_count` 是否仍為 0 區分
   「自始沒有資料」與「錄到一半中斷」兩種訊息。判斷依據仍只有「有沒有資料流」，
   與音量無關——安靜的房間照樣持續送出 callback，走的是既有的 near-zero RMS 提示路徑，
-  不會誤觸此處 (pending)
+  不會誤觸此處 (64e523a)
 - feat(platform): 新增 `platform/alert_sound.py`（Windows `winsound.MessageBeep`／
   macOS `osascript -e beep`／其他平台靜音），由 `select_alert_sound()` 依平台挑選。
   只有上述擷取故障會發聲，其餘通知維持靜音；後端一律不丟例外（回傳 bool），
-  避免沒有音效裝置時把 watchdog 執行緒帶掉。可用 `microphone.alert_sound: false` 關閉 (pending)
+  避免沒有音效裝置時把 watchdog 執行緒帶掉。可用 `microphone.alert_sound: false` 關閉 (64e523a)
 - docs(todo): 移除已完成的待辦——repo 已改名為 `zhtw-voice-typing`、本機 remote URL 已更新，
-  領先的 commit 也已推送 (pending)
+  領先的 commit 也已推送 (64e523a)
 
 ## 2026-09-03
 
