@@ -13,10 +13,13 @@ import pytest
 from asr_input.output.clipboard import ClipboardOutput
 from asr_input.paths import data_dir, logs_dir, project_root
 from asr_input.platform import (
+    MacAlert,
     MacClipboard,
+    NullAlert,
     NullClipboard,
     WindowsClipboard,
     resolve_device,
+    select_alert_sound,
     select_clipboard_backend,
 )
 
@@ -178,3 +181,31 @@ def test_home_override(tmp_path, monkeypatch):
     monkeypatch.setenv("ASR_INPUT_HOME", str(tmp_path))
     assert project_root() == Path(os.path.realpath(tmp_path))
     assert logs_dir() == Path(os.path.realpath(tmp_path)) / "data" / "logs"
+
+
+# --- alert sound ---------------------------------------------------------------
+
+
+def test_alert_backend_matches_the_platform():
+    assert select_alert_sound("win32").name == "windows"
+    assert select_alert_sound("darwin").name == "macos"
+    assert select_alert_sound("linux").name == "null"
+
+
+def test_mac_alert_uses_osascript_beep():
+    calls = []
+    MacAlert(runner=lambda *a, **kw: calls.append((a, kw))).play()
+    assert calls[0][0][0] == ["osascript", "-e", "beep"]
+
+
+def test_alert_failure_is_reported_not_raised():
+    """A missing sound device must not take down the caller's watchdog thread."""
+
+    def explode(*_args, **_kwargs):
+        raise OSError("no audio device")
+
+    assert MacAlert(runner=explode).play() is False
+
+
+def test_null_alert_reports_that_nothing_played():
+    assert NullAlert().play() is False

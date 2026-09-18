@@ -110,6 +110,9 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
 - `src/asr_input/output/clipboard.py` — 剪貼簿輸出（薄包裝，實作在 `platform/`）
 - `src/asr_input/platform/clipboard_backends.py` — 剪貼簿後端：Windows 走 PowerShell `Set-Clipboard`、
   macOS 走 `pbcopy`（stdin 餵入，不經命令列跳脫）；`select_clipboard_backend()` 依平台挑選
+- `src/asr_input/platform/alert_sound.py` — 擷取故障的警示音後端（Windows `winsound.MessageBeep`／
+  macOS `osascript -e beep`／其他平台靜音）；`select_alert_sound()` 依平台挑選，`play()` 回傳
+  bool 而非丟例外
 - `src/asr_input/platform/device.py` — device／compute_type 解析。config 明確指定就尊重，
   未指定才偵測 CUDA。**CUDA 探測必須維持惰性**——`import ctranslate2` 會連帶把 torch
   載進 `sys.modules`（冷啟 ~73s），不可在錄音路徑或 module import 時觸發
@@ -176,6 +179,18 @@ uv run python scripts/build_log_viewer.py --serve  # 產生 log 檢視器 + 啟�
   絕對時間幻覺偵測在部分短段失效**。可作為 codec／回歸實驗的受控條件，不可當 production
   改善提案；若要提，先補短段幻覺的替代偵測訊號。腳本 `experiments/measure_determinism.py`，
   結果 JSON 含逐字稿留在 gitignore 的 `experiments/results/`
+- **麥克風可用性看「有沒有資料流」，不看音量（2026-09-19）**：判定擷取故障的唯一訊號是
+  callback 是否持續送進 frame（`recording.py` 的 `callback_count`），不是振幅。理由是兩者
+  對應不同狀況：安靜的房間會持續產生 callback、內容是靜音，這是正常情形，只能提示
+  「可能靜音」（既有的 `microphone.near_zero_rms` 路徑）；而擷取管線本身停止供應資料時，
+  使用者講得再大聲也不會有任何 frame。把「音量為零」當故障會把沒說話誤判成壞掉，
+  反之只看裝置狀態則會漏掉整類「裝置查詢全部正常但一個 byte 也沒有」的故障——
+  這類故障在音訊裝置上確實存在（USB isochronous 傳輸設計上沒有重傳與錯誤回報，
+  卡住時作業系統各層都不會察覺）。門檻以秒計（`microphone.no_data_warning_sec` 1.0 提醒、
+  `no_data_error_sec` 3.0 停止並保留），與輪詢頻率脫鉤。這兩條路徑只有資料流那條會發出
+  警示音，因為它代表「現在講的話都錄不到」，使用者需要在還在講的時候就知道。
+  刻意不做的事：不針對特定廠牌／VID／PID 判斷，也不內建呼叫作業系統層級的裝置重置——
+  那屬於個別機器的硬體問題，不是這個應用程式該替使用者決定的事
 - **Python 環境**：uv 管理（鎖檔 `uv.lock`），Python 3.12，PyTorch CUDA 12.4 透過 `[tool.uv.sources]` 從 pytorch-cu124 index 安裝
 - **src layout**：程式碼在 `src/asr_input/` 下，hatchling build backend
 - **程式碼風格**：ruff（設定在 `pyproject.toml`，取代 black+flake8），line-length 100，規則集 E/F/I/UP/B/SIM；測試用 pytest

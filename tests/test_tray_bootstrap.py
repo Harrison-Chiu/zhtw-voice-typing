@@ -1,5 +1,6 @@
 """Lightweight tray bootstrap behavior."""
 
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -308,34 +309,123 @@ def test_win32_icon_replacement_error_never_escapes_audio_callback_path(capsys):
     assert "Tray icon update failed" in capsys.readouterr().out
 
 
-def test_two_missing_callback_windows_become_hard_error_and_preserve_capture(monkeypatch):
-    class FakeRecording:
-        recording = True
-        callback_count = 0
+class _FakeTimer:
+    daemon = False
 
-    class FakeTimer:
-        daemon = False
+    def __init__(self, *args, **kwargs):
+        pass
 
-        def __init__(self, *args, **kwargs):
-            pass
+    def start(self):
+        pass
 
-        def start(self):
-            pass
+    def cancel(self):
+        pass
 
-        def cancel(self):
-            pass
 
+class _FakeRecording:
+    recording = True
+
+    def __init__(self, callback_count=0):
+        self.callback_count = callback_count
+
+
+def _watchdog_app(monkeypatch, *, callback_count=0):
+    """TrayApp wired so the watchdog can be stepped without real timers."""
     app = TrayApp()
-    app._recording = FakeRecording()
+    app._recording = _FakeRecording(callback_count)
+    app._alert_sound_enabled = False
+    monkeypatch.setattr(tray.threading, "Timer", _FakeTimer)
+    return app
+
+
+def _stall(app, seconds):
+    """Pretend the last callback arrived `seconds` ago."""
+    app._last_callback_at = time.monotonic() - seconds
+
+
+def test_stalled_capture_warns_before_the_error_threshold(monkeypatch):
+    app = _watchdog_app(monkeypatch)
     stopped = []
-    monkeypatch.setattr(tray.threading, "Timer", FakeTimer)
     monkeypatch.setattr(app, "_stop_capture", lambda: stopped.append(True))
 
+    _stall(app, app._no_data_warning_sec + 0.1)
     app._check_capture_health()
+
+    # Warned, but the capture is still running: the user may still be mid-sentence
+    # and a device that resumes should not have cost them the recording.
+    assert app._input_warning is not None
+    assert stopped == []
+    assert app._lifecycle.snapshot.capture is not CaptureState.ERROR
+
+
+def test_stalled_capture_becomes_hard_error_and_preserves_capture(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    stopped = []
+    monkeypatch.setattr(app, "_stop_capture", lambda: stopped.append(True))
+
+    _stall(app, app._no_data_error_sec + 0.1)
     app._check_capture_health()
 
     assert stopped == [True]
     assert app._lifecycle.snapshot.capture is CaptureState.ERROR
+
+
+def test_capture_that_never_delivered_data_is_reported_differently(monkeypatch):
+    never = _watchdog_app(monkeypatch, callback_count=0)
+    monkeypatch.setattr(never, "_stop_capture", lambda: None)
+    _stall(never, never._no_data_error_sec + 0.1)
+    never._check_capture_health()
+
+    midway = _watchdog_app(monkeypatch, callback_count=7)
+    midway._last_callback_count = 7
+    monkeypatch.setattr(midway, "_stop_capture", lambda: None)
+    _stall(midway, midway._no_data_error_sec + 0.1)
+    midway._check_capture_health()
+
+    assert "自始未送出" in never._lifecycle.snapshot.error
+    assert "中斷" in midway._lifecycle.snapshot.error
+
+
+def test_resumed_callbacks_clear_the_warning(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    monkeypatch.setattr(app, "_stop_capture", lambda: None)
+
+    _stall(app, app._no_data_warning_sec + 0.1)
+    app._check_capture_health()
+    assert app._input_warning is not None
+
+    app._recording.callback_count = 1
+    app._check_capture_health()
+
+    assert app._input_warning is None
+    assert app._lifecycle.snapshot.capture is not CaptureState.ERROR
+
+
+def test_capture_fault_plays_the_alert_sound_once_enabled(monkeypatch):
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+    monkeypatch.setattr(app, "_stop_capture", lambda: None)
+
+    _stall(app, app._no_data_error_sec + 0.1)
+    app._check_capture_health()
+
+    assert played == [True]
+
+
+def test_near_zero_level_never_plays_the_alert_sound(monkeypatch):
+    """Ordinary silence is not a fault; only a dead data stream makes noise."""
+    app = _watchdog_app(monkeypatch)
+    app._alert_sound_enabled = True
+    played = []
+    app._alert_sound = SimpleNamespace(name="fake", play=lambda: played.append(True) or True)
+
+    app._near_zero_warning_sec = 0.0
+    app._on_input_level(0.0)
+    app._on_input_level(0.0)
+
+    assert played == []
 
 
 def test_model_ready_mid_capture_catches_up_then_accepts_live_segment_once(monkeypatch):

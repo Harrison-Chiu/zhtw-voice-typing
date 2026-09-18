@@ -5,6 +5,13 @@ platform-agnostic; anything that shells out to an OS-specific command or probes
 OS-specific hardware belongs here. See `docs/macos-port-plan.md`.
 """
 
+from asr_input.platform.alert_sound import (
+    AlertSound,
+    MacAlert,
+    NullAlert,
+    WindowsAlert,
+    select_alert_sound,
+)
 from asr_input.platform.clipboard_backends import (
     ClipboardBackend,
     MacClipboard,
@@ -22,4 +29,9 @@ __all__ = [
     "NullClipboard",
     "WindowsClipboard",
     "select_clipboard_backend",
+    "AlertSound",
+    "MacAlert",
+    "NullAlert",
+    "WindowsAlert",
+    "select_alert_sound",
 ]

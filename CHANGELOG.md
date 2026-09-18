@@ -3,6 +3,25 @@
 倒序，一條一行；括號內 `(hash)` 可用 `git show <hash>` 看細節。
 本檔只記「已完成」；待辦見 `TODO.md`。
 
+## 2026-09-19
+
+- feat(tray): 麥克風無資料流的偵測改以秒為門檻並加上警示音。原本的 watchdog 固定每 2 秒
+  輪詢一次、連兩次沒有新 callback 才判定失敗，使用者最快也要 2 秒才被提醒、4 秒才會停下，
+  而且所有通知都走 `_silent_notify`（無聲），對著沒有資料進來的麥克風講話時很容易整段講完
+  才發現。改為記錄「距離上次收到 callback 幾秒」，門檻寫成
+  `microphone.no_data_warning_sec`（預設 1.0，提醒但繼續錄）與 `no_data_error_sec`
+  （預設 3.0，停止並保留已錄內容），輪詢頻率（`CAPTURE_POLL_SEC` 0.5 秒）與門檻脫鉤，
+  改輪詢頻率不會連帶改變使用者等待的時間。另依 `callback_count` 是否仍為 0 區分
+  「自始沒有資料」與「錄到一半中斷」兩種訊息。判斷依據仍只有「有沒有資料流」，
+  與音量無關——安靜的房間照樣持續送出 callback，走的是既有的 near-zero RMS 提示路徑，
+  不會誤觸此處 (pending)
+- feat(platform): 新增 `platform/alert_sound.py`（Windows `winsound.MessageBeep`／
+  macOS `osascript -e beep`／其他平台靜音），由 `select_alert_sound()` 依平台挑選。
+  只有上述擷取故障會發聲，其餘通知維持靜音；後端一律不丟例外（回傳 bool），
+  避免沒有音效裝置時把 watchdog 執行緒帶掉。可用 `microphone.alert_sound: false` 關閉 (pending)
+- docs(todo): 移除已完成的待辦——repo 已改名為 `zhtw-voice-typing`、本機 remote URL 已更新，
+  領先的 commit 也已推送 (pending)
+
 ## 2026-09-03
 
 - experiment: 審核佇列多來源預標註排序（production／FW temperature=0／Qwen3-ASR-1.7B 三來源兩兩 normalized CER）——候選組平均分歧 0.853 vs 對照 0.065，但中位數僅 0.046 vs 0.027，差距由少數重複退化段拉開；量尺會摺疊標點，故純標點訊號在此必然低分歧 (ece7389)

@@ -32,13 +32,13 @@ G-Phase 3 會動 `tray.py`，與 D 線衝突，不可同時進行。
 - **remote 已建立並公開**：`https://github.com/Harrison-Chiu/asr-input`（2026-09-01 推送，
   已用匿名 `ls-remote` 驗證為 public，遠端 121 檔無音訊／權重／log）。認證走既有的
   Git Credential Manager（HTTPS），本機未安裝 `gh`、`~/.ssh` 也沒有 GitHub 設定。
+- **已完成**：repo 已改名為 `zhtw-voice-typing`，本機 remote URL 也已更新
+  （2026-09-19 以 `git remote -v` 確認）。
 - **待做（需在 GitHub 網頁操作，本機憑證只夠 push）**：
-  1. repo 改名為 `zhtw-voice-typing`（已決定；舊網址會 301 轉址），改完更新本機 remote URL
-  2. 設定 About 的 description 與 topics（`speech-to-text` `whisper` `faster-whisper`
+  1. 設定 About 的 description 與 topics（`speech-to-text` `whisper` `faster-whisper`
      `traditional-chinese` `zh-tw` `taiwan` `voice-input` `voice-typing` `asr` `offline`
      `local-first` `windows` `python`）——repo 搜尋比對名稱／description／topics，
      README 內文預設不在比對範圍
-  3. 推送本機領先的 commit
 
 ## 維護規則
 

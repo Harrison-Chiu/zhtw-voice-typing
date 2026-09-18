@@ -52,6 +52,11 @@ microphone:
   # hypothesis：需以安靜、Windows 靜音、拔除／停用裝置實測後再調整。
   near_zero_rms: 0.0001
   near_zero_warning_sec: 5.0
+  # 以下兩項看的是「有沒有資料流」，與音量無關：安靜的房間仍會持續送出資料，
+  # 走的是上面的 near_zero 路徑，不會觸發這裡。
+  no_data_warning_sec: 1.0   # 多久收不到麥克風資料就先提醒（錄音繼續）
+  no_data_error_sec: 3.0     # 多久收不到就判定擷取失敗、停止並保留已錄內容
+  alert_sound: true          # 上述兩種情況額外發出系統警示音；其餘通知一律靜音
 
 processing:
   # 語音輸入預設只轉字形，保留使用者實際說出的「接口／設備」等詞。

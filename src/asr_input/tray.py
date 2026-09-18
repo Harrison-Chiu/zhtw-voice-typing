@@ -26,6 +26,7 @@ from asr_input.lifecycle import (
     LifecycleMachine,
     ModelState,
 )
+from asr_input.platform import select_alert_sound
 from asr_input.single_instance import SingleInstance, notify_already_running
 
 
@@ -171,6 +172,10 @@ def _rms_to_icon_level(rms: float, *, ceiling: float = 0.02) -> float:
 
 NIIF_NOSOUND = 0x10
 
+# How often the capture watchdog polls. The user-visible delays are the
+# `no_data_*_sec` thresholds; this only bounds their resolution.
+CAPTURE_POLL_SEC = 0.5
+
 
 def _silent_notify(icon: pystray.Icon | None, message: str, title: str = "") -> None:
     """Windows notification without the default chime."""
@@ -248,12 +253,17 @@ class TrayApp:
         self._model_status_timer: threading.Timer | None = None
         self._model_load_started_at: float | None = None
         self._last_callback_count = 0
-        self._missed_callback_checks = 0
+        self._last_callback_at: float | None = None
+        self._no_data_warned = False
         self._input_level = 0.0
         self._input_warning: str | None = None
         self._near_zero_threshold = 0.0001
         self._near_zero_warning_sec = 5.0
         self._near_zero_since: float | None = None
+        self._no_data_warning_sec = 1.0
+        self._no_data_error_sec = 3.0
+        self._alert_sound = select_alert_sound()
+        self._alert_sound_enabled = True
         self._tray: pystray.Icon | None = None
         self._stop_feedback = False
         self._setup_error: str | None = None
@@ -367,6 +377,9 @@ class TrayApp:
         microphone_cfg = self._config.get("microphone", {})
         self._near_zero_threshold = microphone_cfg.get("near_zero_rms", 0.0001)
         self._near_zero_warning_sec = microphone_cfg.get("near_zero_warning_sec", 5.0)
+        self._no_data_warning_sec = float(microphone_cfg.get("no_data_warning_sec", 1.0))
+        self._no_data_error_sec = float(microphone_cfg.get("no_data_error_sec", 3.0))
+        self._alert_sound_enabled = bool(microphone_cfg.get("alert_sound", True))
         history_cfg = self._config.get("history", {})
         self._recent_results_enabled = history_cfg.get("recent_results_enabled", True)
         self._recent_results_limit = history_cfg.get("recent_results_limit", 20)
@@ -1182,37 +1195,89 @@ class TrayApp:
     def _start_capture_watchdog(self) -> None:
         self._stop_capture_watchdog()
         self._last_callback_count = self._recording.callback_count
-        self._missed_callback_checks = 0
-        self._capture_watchdog = threading.Timer(2.0, self._check_capture_health)
+        self._last_callback_at = time.monotonic()
+        self._no_data_warned = False
+        self._schedule_capture_watchdog()
+
+    def _schedule_capture_watchdog(self) -> None:
+        self._capture_watchdog = threading.Timer(CAPTURE_POLL_SEC, self._check_capture_health)
         self._capture_watchdog.daemon = True
         self._capture_watchdog.start()
 
+    def _alert(self) -> None:
+        """Sound the capture-fault alert, if enabled.
+
+        Kept separate from `_silent_notify` on purpose: notifications stay quiet
+        because most of them are progress, while "the microphone is delivering
+        nothing" is the one case the user must notice while still speaking.
+        A failed beep must never take the watchdog thread down with it.
+        """
+        if not self._alert_sound_enabled:
+            return
+        try:
+            self._alert_sound.play()
+        except Exception as exc:  # pragma: no cover - backends already swallow
+            print(f"麥克風警示音效失敗：{exc}", flush=True)
+
     def _check_capture_health(self) -> None:
+        """Escalate on elapsed silence of the *data stream*, not of the audio.
+
+        The only signal used here is whether callbacks keep delivering frames.
+        A quiet room still produces callbacks, so it is handled by the near-zero
+        RMS path instead and never reaches this method. Thresholds are in
+        seconds rather than a count of polls, so the poll rate can change
+        without silently changing how long the user waits to be told.
+        """
         if not self._recording or not self._recording.recording:
             return
+
         callback_count = self._recording.callback_count
-        if callback_count == self._last_callback_count:
-            self._missed_callback_checks += 1
-            if self._missed_callback_checks >= 2:
-                message = "麥克風 callback 已中斷；錄音已停止並保留"
-                with self._lock:
-                    self._lifecycle.capture_failed(message)
-                self._stop_capture()
-                self._refresh_state()
-                _silent_notify(self._tray, message, "ASR Input 麥克風錯誤")
-                return
-            self._input_warning = "兩秒內未收到麥克風資料；裝置可能中斷"
-            self._refresh_state()
-            _silent_notify(self._tray, self._input_warning, "ASR Input 麥克風警告")
-        else:
+        now = time.monotonic()
+        if callback_count != self._last_callback_count:
             self._last_callback_count = callback_count
-            self._missed_callback_checks = 0
-            if self._input_warning == "兩秒內未收到麥克風資料；裝置可能中斷":
+            self._last_callback_at = now
+            if self._no_data_warned:
+                self._no_data_warned = False
                 self._input_warning = None
                 self._refresh_state()
-        self._capture_watchdog = threading.Timer(2.0, self._check_capture_health)
-        self._capture_watchdog.daemon = True
-        self._capture_watchdog.start()
+            self._schedule_capture_watchdog()
+            return
+
+        if self._last_callback_at is None:
+            self._last_callback_at = now
+            self._schedule_capture_watchdog()
+            return
+
+        stalled_sec = now - self._last_callback_at
+        # A capture that never produced a single frame is reported differently
+        # from one that stopped midway: the first means nothing was recorded at
+        # all, the second means the earlier audio is still worth keeping.
+        never_started = callback_count == 0
+
+        if stalled_sec >= self._no_data_error_sec:
+            if never_started:
+                message = f"麥克風自始未送出任何資料（已 {stalled_sec:.1f} 秒）；錄音已停止"
+            else:
+                message = f"麥克風資料已中斷 {stalled_sec:.1f} 秒；錄音已停止並保留"
+            with self._lock:
+                self._lifecycle.capture_failed(message)
+            self._stop_capture()
+            self._refresh_state()
+            _silent_notify(self._tray, message, "ASR Input 麥克風錯誤")
+            self._alert()
+            return
+
+        if stalled_sec >= self._no_data_warning_sec and not self._no_data_warned:
+            self._no_data_warned = True
+            if never_started:
+                self._input_warning = "尚未收到麥克風資料；現在可能錄不到聲音"
+            else:
+                self._input_warning = "麥克風資料中斷；現在可能錄不到聲音"
+            self._refresh_state()
+            _silent_notify(self._tray, self._input_warning, "ASR Input 麥克風警告")
+            self._alert()
+
+        self._schedule_capture_watchdog()
 
     def _stop_capture_watchdog(self) -> None:
         timer, self._capture_watchdog = self._capture_watchdog, None
